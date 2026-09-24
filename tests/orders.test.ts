@@ -73,6 +73,11 @@ before(async () => {
   mock.method(stripeClient.paymentIntents, "retrieve", async (id: string) =>
     payments.get(id),
   );
+  await db.category.upsert({
+    where: { name: "Hoodies" },
+    update: {},
+    create: { name: "Hoodies" },
+  });
   await db.product.create({
     data: {
       id: "product",
@@ -331,6 +336,61 @@ test("signed asynchronous completion waits for payment and refund-before-success
   assert.equal(Number(saved.refundedAmount), 79.9);
 });
 
+test("categories rename existing products and reject case-insensitive duplicates", async () => {
+  const { saveCategory } = await import("../lib/category-actions");
+  const c = await saveCategory({
+    name: "Outerwear",
+    description: "Coats",
+    image: "",
+    position: 1,
+  });
+  await db.product.create({
+    data: {
+      slug: "category-test",
+      name: "Category test",
+      description: "Test",
+      category: c.name,
+      basePrice: 10,
+    },
+  });
+  await saveCategory({ ...c, name: "Jackets" });
+  assert.equal(
+    (await db.product.findUniqueOrThrow({ where: { slug: "category-test" } }))
+      .category,
+    "Jackets",
+  );
+  await assert.rejects(
+    saveCategory({ name: "jackets", description: "", image: "", position: 0 }),
+    /vergeben/,
+  );
+});
+test("deleting an occupied category requires reassignment and preserves products", async () => {
+  const { saveCategory, deleteCategory } =
+    await import("../lib/category-actions");
+  const c = await db.category.findUniqueOrThrow({ where: { name: "Jackets" } });
+  await assert.rejects(deleteCategory({ id: c.id }), /Zielkategorie/);
+  const target = await saveCategory({
+    name: "Essentials",
+    description: "",
+    image: "",
+    position: 2,
+  });
+  await deleteCategory({ id: c.id, moveTo: target.id });
+  assert.equal(await db.category.findUnique({ where: { id: c.id } }), null);
+  assert.equal(
+    (await db.product.findUniqueOrThrow({ where: { slug: "category-test" } }))
+      .category,
+    "Essentials",
+  );
+  const empty = await saveCategory({
+    name: "Empty",
+    description: "",
+    image: "",
+    position: 3,
+  });
+  await deleteCategory({ id: empty.id });
+  assert.equal(await db.category.findUnique({ where: { id: empty.id } }), null);
+});
 test("database refuses negative inventory even outside the API", async () => {
   await assert.rejects(
     db.variant.update({ where: { id: "plenty" }, data: { stock: -1 } }),

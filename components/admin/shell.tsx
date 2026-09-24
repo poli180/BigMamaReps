@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Layers3,
   ShoppingBag,
   Package,
   Users,
@@ -19,9 +20,10 @@ const links = [
   ["/admin", "Übersicht", LayoutDashboard],
   ["/admin/orders", "Bestellungen", ShoppingBag],
   ["/admin/products", "Produkte", Package],
+  ["/admin/categories", "Kategorien", Layers3],
   ["/admin/sales", "Aktionen", Tag],
   ["/admin/customers", "Kunden", Users],
-  ["/admin/content", "Inhalte", PanelsTopLeft],
+  ["/admin/content", "Home & Hero", PanelsTopLeft],
   ["/admin/settings", "Einstellungen", Settings],
 ] as const;
 export function AdminShell({ children }: { children: React.ReactNode }) {

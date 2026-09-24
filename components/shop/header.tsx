@@ -8,9 +8,11 @@ import { useStore } from "./store-provider";
 export function Header({
   announcement,
   logoUrl,
+  categories,
 }: {
   announcement: string;
   logoUrl: string;
+  categories: string[];
 }) {
   const store = useStore();
   const path = usePathname();
@@ -29,11 +31,38 @@ export function Header({
   }, [path]);
   const nav = (
     <>
+      <Link
+        className={path === "/" ? "active" : ""}
+        href="/"
+        aria-current={path === "/" ? "page" : undefined}
+      >
+        Home
+      </Link>
       <Link className={path === "/shop" ? "active" : ""} href="/shop">
         Shop
       </Link>
       <Link href="/shop?sort=new">New Arrivals</Link>
-      <Link href="/shop?category=Hoodies">Essentials</Link>
+      <details className="nav-categories">
+        <summary>
+          Kategorien <span>⌄</span>
+        </summary>
+        <div className="category-dropdown">
+          {categories.map((c) => (
+            <Link
+              key={c}
+              href={`/shop?category=${encodeURIComponent(c)}`}
+              onClick={(e) => {
+                e.currentTarget.closest("details")?.removeAttribute("open");
+                setMobile(false);
+              }}
+            >
+              {c}
+              <ArrowUpRight size={15} />
+            </Link>
+          ))}
+          {!categories.length && <span>Noch keine Kategorien</span>}
+        </div>
+      </details>
       <Link className="sale-nav" href="/sale">
         Sale <span>↗</span>
       </Link>

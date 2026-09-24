@@ -1,9 +1,8 @@
 import { db, isDemo } from "./db";
 export const defaults = {
-  heroType: "image",
-  heroUrl:
-    "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=2000&q=85",
-  heroPoster: "",
+  heroType: "video",
+  heroUrl: "/media/fashion-lookbook.mp4",
+  heroPoster: "/media/fashion-lookbook.png",
   heroTitle: "Dein Style.\nDeine Regeln.",
   heroSubtitle:
     "Zeitlose Essentials. Entspannte Silhouetten. Gemacht für deinen Alltag.",

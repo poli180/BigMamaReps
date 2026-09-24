@@ -236,8 +236,16 @@ const emptyProduct: ShopProduct = {
   createdAt: "",
   variants: [],
 };
-export function ProductEditor({ initial }: { initial?: ShopProduct }) {
-  const [p, setP] = useState<ShopProduct>(initial ?? emptyProduct);
+export function ProductEditor({
+  initial,
+  categoryNames,
+}: {
+  initial?: ShopProduct;
+  categoryNames: string[];
+}) {
+  const [p, setP] = useState<ShopProduct>(
+    initial ?? { ...emptyProduct, category: categoryNames[0] ?? "" },
+  );
   const [message, setMessage] = useState<Message>({});
   const [busy, setBusy] = useState(false);
   const [color, setColor] = useState("Black");
@@ -362,11 +370,19 @@ export function ProductEditor({ initial }: { initial?: ShopProduct }) {
               </label>
               <label>
                 Kategorie
-                <input
+                <select
                   required
                   value={p.category}
                   onChange={(e) => field("category", e.target.value)}
-                />
+                >
+                  <option value="">Kategorie wählen</option>
+                  {categoryNames.map((name) => (
+                    <option key={name}>{name}</option>
+                  ))}
+                </select>
+                <a className="muted" href="/admin/categories">
+                  Kategorien verwalten →
+                </a>
               </label>
             </div>
             <label>
@@ -869,98 +885,10 @@ export function SettingsEditor({
             {input("tiktok", "TikTok-URL")}
             <p className="muted">
               Featured-Produkte über den Schalter im Produkteditor auswählen.
-              Kategorien entstehen aus deinen Produkten.
+              Kategorien unter „Kategorien“ anlegen und Produkten zuordnen.
             </p>
           </section>
-          <section className="panel">
-            <h2>Kategorie-Banner</h2>
-            <p className="muted">
-              Ohne eigene Banner verwendet die Startseite die ersten drei
-              Produktkategorien.
-            </p>
-            {s.categoryBanners.map((banner, i) => (
-              <div className="category-banner-editor" key={i}>
-                <div className="form-row">
-                  <label>
-                    Kategorie
-                    <input
-                      value={banner.category}
-                      onChange={(e) =>
-                        field(
-                          "categoryBanners",
-                          s.categoryBanners.map((b, n) =>
-                            n === i ? { ...b, category: e.target.value } : b,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label>
-                    Anzeigetitel
-                    <input
-                      value={banner.title}
-                      onChange={(e) =>
-                        field(
-                          "categoryBanners",
-                          s.categoryBanners.map((b, n) =>
-                            n === i ? { ...b, title: e.target.value } : b,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-                <label>
-                  Bild-URL
-                  <input
-                    value={banner.image}
-                    onChange={(e) =>
-                      field(
-                        "categoryBanners",
-                        s.categoryBanners.map((b, n) =>
-                          n === i ? { ...b, image: e.target.value } : b,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <MediaUpload
-                  onUploaded={(urls) =>
-                    field(
-                      "categoryBanners",
-                      s.categoryBanners.map((b, n) =>
-                        n === i ? { ...b, image: urls[0] } : b,
-                      ),
-                    )
-                  }
-                />
-                <button
-                  type="button"
-                  className="text-btn"
-                  onClick={() =>
-                    field(
-                      "categoryBanners",
-                      s.categoryBanners.filter((_, n) => n !== i),
-                    )
-                  }
-                >
-                  Banner entfernen
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="btn outline"
-              onClick={() =>
-                field("categoryBanners", [
-                  ...s.categoryBanners,
-                  { category: "", title: "", image: "" },
-                ])
-              }
-            >
-              Banner hinzufügen
-            </button>
-          </section>
+
           <section className="panel">
             <h2>Über uns</h2>
             <StableRichEditor

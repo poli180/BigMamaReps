@@ -2,6 +2,15 @@ import { adminApi, apiError } from "@/lib/auth";
 import { settingsInput } from "@/lib/validation";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { settings } from "@/lib/settings";
+export async function GET(req: Request) {
+  try {
+    await adminApi(req);
+    return Response.json(await settings());
+  } catch (e) {
+    return apiError(e);
+  }
+}
 export async function POST(req: Request) {
   try {
     await adminApi(req);

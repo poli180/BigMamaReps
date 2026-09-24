@@ -2,6 +2,8 @@
 
 Deutschsprachiger Fashion-Shop mit Next.js App Router, React, Tailwind CSS, Framer Motion, PostgreSQL/Prisma und Stripe Checkout. Shop und API laufen gemeinsam als Next.js-Anwendung; es ist kein separates Frontend-Deployment erforderlich.
 
+Für das Deployment auf Vercel: **[Schritt-für-Schritt-Anleitung](VERCEL.md)**.
+
 ## Enthalten
 
 - Responsive Startseite, Produktkatalog, Kategorien, Filter, Sortierung, Sale-Seite, Produktgalerie/Zoom, Farb-/Größenwahl und persistenter Warenkorb mit Drawer.
@@ -9,6 +11,8 @@ Deutschsprachiger Fashion-Shop mit Next.js App Router, React, Tailwind CSS, Fram
 - Eigener Admin-Login ohne öffentliche Registrierung, bcrypt-Hash, signierte achtstündige Sitzung, HttpOnly-/SameSite-Cookie, Secure-Cookie in Produktion, Proxy- und zusätzliche serverseitige Autorisierungsprüfungen.
 - Dashboard, Bestellübersicht und Details, Zahlungs-/Versandstatus, Notizen, Tracking, Kundenliste und Bestellhistorie.
 - Produkteditor mit Variantenmatrix, Bestand je Variante, Medien je Farbe, Mehrfach- und Drag-and-drop-Upload, Bildreihenfolge und Aktivierung/Deaktivierung.
+- Kategorienverwaltung mit Namen, Beschreibung, Titelbild, Sortierung und sicherer Produktverschiebung beim Löschen.
+- Editorial-Home mit eigenem MP4-Hero, Autoplay/Loop, Pause-Tasten, rechts laufendem Banner und Scroll-/Hover-Animationen.
 - CMS für Hero-Bild/Video/Platzhalter, Texte, Banner, Logo, Farben, Footer, Social Links und rechtliche Seiten.
 - Stripe Checkout, signierte Webhooks, asynchrone Zahlungsmethoden, vollständige/teilweise Erstattungen, Lagerreservierungen, idempotente Bestellverarbeitung, fortlaufende Bestellnummern.
 - Resend-E-Mail-Outbox für Kunde und Betreiber, optional Telegram, Versandbenachrichtigung, authentifizierter Cron-Abgleich.
@@ -105,6 +109,8 @@ Bucket-CORS muss `PUT` von deiner `APP_URL`, den Header `Content-Type` und lesba
 ```
 
 Uploads sind auf JPG/PNG/WebP (10 MB) sowie MP4/WebM (100 MB) begrenzt. SVG/HTML-Uploads sind ausgeschlossen. Signierte Upload-URLs gelten zehn Minuten. Der Store/CDN muss öffentliche Leserechte auf den Medienpfad haben, keine öffentlichen Schreibrechte. `STORAGE_BUCKET_URL` wird zur Build-Zeit für Next Image freigegeben; nach Änderung erneut bauen. Weitere externe Bildhosts müssen ausdrücklich in `next.config.ts` freigegeben werden.
+
+Das Fashion-Lookbook ist als `public/media/fashion-lookbook.mp4` (H.264/Faststart) mit Poster enthalten. Es ist eine animierte Bildsequenz mit KI-generierten Models in den gewünschten Markenlooks, keine echte Filmaufnahme oder offizielle Markenkampagne. Es benötigt keinen externen Videoanbieter. Im Admin unter **Home & Hero** austauschbar.
 
 Video: `autoplay muted loop playsinline`, `preload="metadata"` und optionales Poster. Keine automatische Transkodierung/Streaming-Pipeline: Videos vor Upload optimieren, beispielsweise als kompaktes H.264 MP4 mit Faststart. Ohne hochgeladenes Medium erscheint der animierte Platzhalter. Das Beispielmaterial von Unsplash dient ausschließlich der gekennzeichneten Vorschau; eigene Produktfotos und verifizierte Produktangaben vor Verkauf einsetzen.
 

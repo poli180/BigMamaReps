@@ -7,12 +7,14 @@ import { Reveal } from "./motion";
 import { SlidersHorizontal, X } from "lucide-react";
 export function CatalogGrid({
   products,
+  categoryNames,
   initialCategory = "",
   initialQuery = "",
   saleOnly = false,
   initialSort = "new",
 }: {
   products: ShopProduct[];
+  categoryNames?: string[];
   initialCategory?: string;
   initialQuery?: string;
   saleOnly?: boolean;
@@ -26,7 +28,9 @@ export function CatalogGrid({
   const [sale, setSale] = useState(saleOnly);
   const [sort, setSort] = useState(initialSort);
   const [filters, setFilters] = useState(false);
-  const categories = [...new Set(products.map((p) => p.category))];
+  const categories = categoryNames ?? [
+    ...new Set(products.map((p) => p.category)),
+  ];
   const colors = [
     ...new Set(products.flatMap((p) => p.variants.map((v) => v.color))),
   ];

@@ -5,6 +5,14 @@ datasource db {
   provider = "postgresql"
   url = env("DATABASE_URL")
 }
+model Category {
+  id String @id @default(cuid())
+  name String @unique
+  description String @default("")
+  image String @default("")
+  position Int @default(0)
+  products Product[]
+}
 model Product {
   id String @id @default(cuid())
   slug String @unique
@@ -13,6 +21,7 @@ model Product {
   material String @default("")
   care String @default("")
   category String
+  categoryRecord Category @relation(fields: [category], references: [name], onUpdate: Cascade, onDelete: Restrict)
   basePrice Decimal @db.Decimal(10,2)
   active Boolean @default(true)
   featured Boolean @default(false)

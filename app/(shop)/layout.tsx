@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { categories } from "@/lib/categories";
+import { ScrollProgress } from "@/components/shop/motion";
 import { settings } from "@/lib/settings";
 import { isDemo } from "@/lib/db";
 import { StoreProvider } from "@/components/shop/store-provider";
@@ -9,7 +11,7 @@ export default async function ShopLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const s = await settings();
+  const [s, categoryList] = await Promise.all([settings(), categories()]);
   return (
     <div
       style={
@@ -26,8 +28,13 @@ export default async function ShopLayout({
         <a className="skip-link" href="#main">
           Zum Inhalt
         </a>
-        <Header announcement={s.announcement} logoUrl={s.logoUrl} />
-        {isDemo() && (
+        <ScrollProgress />
+        <Header
+          announcement={s.announcement}
+          logoUrl={s.logoUrl}
+          categories={categoryList.map((c) => c.name)}
+        />
+        {(isDemo() || process.env.SHOP_PREVIEW === "true") && (
           <div className="demo-banner">
             SHOP-VORSCHAU · Beispielprodukte · Kein echter Kauf möglich
           </div>

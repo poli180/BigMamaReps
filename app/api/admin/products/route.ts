@@ -8,6 +8,8 @@ export async function POST(req: Request) {
     const p = productInput.parse(await req.json());
     const { variants, id, ...data } = p;
     const result = await db.$transaction(async (tx) => {
+      if (!(await tx.category.findUnique({ where: { name: data.category } })))
+        throw new ApiError("Bitte eine vorhandene Kategorie wählen.");
       const product = id
         ? await tx.product.update({ where: { id }, data })
         : await tx.product.create({ data });

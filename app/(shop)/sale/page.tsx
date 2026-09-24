@@ -1,3 +1,4 @@
+import { categories } from "@/lib/categories";
 import { products } from "@/lib/catalog";
 import { CatalogGrid } from "@/components/shop/catalog-grid";
 export const metadata = { title: "Sale" };
@@ -9,7 +10,12 @@ export default async function Sale() {
       <p className="lead">
         Aktuelle Angebote, solange dein Lieblingsstück noch da ist.
       </p>
-      <CatalogGrid products={await products()} saleOnly />
+      <CatalogGrid
+        key={"sale"}
+        categoryNames={(await categories()).map((c) => c.name)}
+        products={await products()}
+        saleOnly
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { defaults } from "../lib/settings";
 async function main() {
   for (const p of demoProducts) {
     const { id, variants, sold, ...data } = p;
+    await db.category.upsert({ where: { name: p.category }, update: {}, create: { name: p.category } });
     await db.product.upsert({
       where: { slug: p.slug },
       update: {},

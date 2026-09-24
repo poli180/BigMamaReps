@@ -1,3 +1,6 @@
+import { BrandTicker } from "@/components/shop/brand-ticker";
+import { Hero } from "@/components/shop/hero";
+import { categories as getCategories } from "@/lib/categories";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -17,73 +20,11 @@ export default async function Home() {
   const [all, s] = await Promise.all([products(), settings()]);
   const featured = all.filter((p) => p.featured).slice(0, 4);
   const sale = all.filter((p) => priceFor(p).onSale).slice(0, 4);
-  const categories = s.categoryBanners.length
-    ? s.categoryBanners
-    : [...new Set(all.map((p) => p.category))]
-        .slice(0, 3)
-        .map((category) => ({ category, title: category, image: "" }));
+  const categories = await getCategories();
   return (
     <>
-      <section className="hero">
-        {s.heroUrl ? (
-          s.heroType === "video" ? (
-            <video
-              className="hero-media"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              poster={s.heroPoster || undefined}
-            >
-              <source src={s.heroUrl} />
-            </video>
-          ) : (
-            <Image
-              className="hero-media"
-              src={s.heroUrl}
-              alt="Fashion für deinen Alltag"
-              fill
-              priority
-              sizes="100vw"
-            />
-          )
-        ) : (
-          <div className="hero-placeholder">
-            <Play size={30} />
-            <span>
-              Noch kein Hero-{s.heroType === "video" ? "Video" : "Bild"}{" "}
-              hinterlegt
-            </span>
-          </div>
-        )}
-        <div className="hero-shade" />
-        <Reveal className="hero-copy">
-          <span className="hero-kicker">
-            <span /> THE EVERYDAY COLLECTION — 2026
-          </span>
-          <h1>
-            {s.heroTitle.split("\n").map((line, i) => (
-              <span key={i}>
-                {line}
-                <br />
-              </span>
-            ))}
-          </h1>
-          <p>{s.heroSubtitle}</p>
-          <Link href={s.heroLink} className="btn light">
-            {s.heroCta}
-            <ArrowUpRight size={20} />
-          </Link>
-        </Reveal>
-        <div className="hero-bottom">
-          <span>WENIGER REGELN. MEHR DU.</span>
-          <span>Entdecke deinen nächsten Lieblingslook ↓</span>
-        </div>
-        <div className="hero-index">
-          01 <span>/ 03</span>
-        </div>
-      </section>
+      <Hero settings={s} />
+      <BrandTicker />
       <div className="benefit-strip">
         <span>
           <Truck size={19} /> Kostenloser Versand ab {money(s.freeShippingFrom)}
@@ -96,7 +37,7 @@ export default async function Home() {
           {s.shippingText}
         </span>
       </div>
-      <section className="section">
+      <section className="section home-edit" id="home-edit">
         <Reveal className="section-heading">
           <div>
             <p className="eyebrow">CURATED FOR YOUR EVERYDAY</p>
@@ -114,7 +55,7 @@ export default async function Home() {
           ))}
         </div>
       </section>
-      <section className="section category-section">
+      <section className="section category-section" id="kollektionen">
         <Reveal className="section-heading">
           <div>
             <p className="eyebrow">FINDE DEINEN LOOK</p>
@@ -124,7 +65,7 @@ export default async function Home() {
         </Reveal>
         <div className="category-grid">
           {categories.map((banner, i) => {
-            const category = banner.category;
+            const category = banner.name;
             const p = all.find((p) => p.category === category);
             const url = banner.image || p?.variants[0]?.images[0]?.url;
             return (
@@ -133,16 +74,15 @@ export default async function Home() {
                   href={`/shop?category=${encodeURIComponent(category)}`}
                   className="category-card"
                 >
-                  {url && (
-                    <Image
-                      src={url}
-                      alt={category}
-                      fill
-                      sizes="(max-width:640px) 100vw, 33vw"
-                    />
-                  )}
+                  {url && <img src={url} alt={category} loading="lazy" />}
                   <div>
-                    <h3>{banner.title}</h3>
+                    <div>
+                      <span className="category-number">
+                        0{i + 1} / COLLECTION
+                      </span>
+                      <h3>{banner.name}</h3>
+                      <p>{banner.description || "Finde deinen neuen Look."}</p>
+                    </div>
                     <span className="circle-arrow">
                       <ArrowUpRight />
                     </span>
@@ -173,6 +113,38 @@ export default async function Home() {
           </div>
         </section>
       )}
+      <section className="style-story section">
+        <Reveal className="style-story-image">
+          <Image
+            src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=85"
+            alt="Inspiration für deinen persönlichen Alltagslook"
+            fill
+            sizes="(max-width:700px) 100vw, 50vw"
+          />
+          <span>THE EVERYDAY EDIT / BMR STUDIO</span>
+        </Reveal>
+        <Reveal className="style-story-copy">
+          <p className="eyebrow">DEIN STYLE BRAUCHT KEINE ERLAUBNIS</p>
+          <h2>
+            Weniger müssen.
+            <br />
+            <em>Mehr du sein.</em>
+          </h2>
+          <p>
+            Die besten Pieces passen nicht nur zu deinem Outfit. Sie passen zu
+            deinem Leben. Entdecke entspannte Silhouetten und Essentials, die du
+            immer wieder tragen willst.
+          </p>
+          <Link href="/shop?sort=new" className="btn">
+            Entdecke den Edit
+            <ArrowUpRight size={18} />
+          </Link>
+          <div className="story-details">
+            <span>01 / EASY TO WEAR</span>
+            <span>02 / MADE TO MIX</span>
+          </div>
+        </Reveal>
+      </section>
       <section className="brand-section">
         <Reveal>
           <p className="eyebrow">BIGMAMAREPS®</p>

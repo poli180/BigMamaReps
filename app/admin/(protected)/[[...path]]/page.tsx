@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { categories } from "@/lib/categories";
+import { CategoryManager } from "@/components/admin/categories";
 import { notFound } from "next/navigation";
 import {
   Plus,
@@ -132,6 +134,8 @@ export default async function AdminPage({
   const q = await searchParams;
   const [area, id] = path;
   if (path.length > 2) notFound();
+  if (area === "categories" && !id)
+    return <CategoryManager initial={await categories()} />;
   if (!area) {
     const now = new Date();
     const day = new Date(now);
@@ -242,11 +246,21 @@ export default async function AdminPage({
   }
   if (area === "products") {
     const all = await products(true);
-    if (id === "new") return <ProductEditor />;
+    if (id === "new")
+      return (
+        <ProductEditor
+          categoryNames={(await categories()).map((c) => c.name)}
+        />
+      );
     if (id) {
       const p = all.find((p) => p.id === id);
       if (!p) notFound();
-      return <ProductEditor initial={p} />;
+      return (
+        <ProductEditor
+          initial={p}
+          categoryNames={(await categories()).map((c) => c.name)}
+        />
+      );
     }
     const filtered = all.filter(
       (p) =>
