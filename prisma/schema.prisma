@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model Product {
+  id String @id @default(cuid())
+  slug String @unique
+  name String
+  description String
+  material String @default("")
+  care String @default("")
+  category String
+  basePrice Decimal @db.Decimal(10,2)
+  active Boolean @default(true)
+  featured Boolean @default(false)
+  onSale Boolean @default(false)
+  salePrice Decimal? @db.Decimal(10,2)
+  saleStart DateTime?
+  saleEnd DateTime?
+  createdAt DateTime @default(now())
+  variants Variant[]
+}
+model Variant {
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields:[productId],references:[id])
+  color String
+  colorHex String @default("#252525")
+  size String
+  sku String @unique
+  stock Int
+  reserved Int @default(0)
+  active Boolean @default(true)
+  priceOverride Decimal? @db.Decimal(10,2)
+  images VariantImage[]
+  items OrderItem[]
+  @@unique([productId,color,size])
+}
+model VariantImage {
+  id String @id @default(cuid())
+  variantId String
+  variant Variant @relation(fields:[variantId],references:[id],onDelete:Cascade)
+  url String
+  order Int
+}
+model Customer {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  phone String?
+  addresses Address[]
+  orders Order[]
+}
+model Address {
+  id String @id @default(cuid())
+  customerId String
+  customer Customer @relation(fields:[customerId],references:[id])
+  street String
+  houseNr String
+  zip String
+  city String
+  country String
+}
+model Order {
+  id String @id @default(cuid())
+  sequence Int @unique @default(autoincrement())
+  orderNumber String @unique
+  customerId String
+  customer Customer @relation(fields:[customerId],references:[id])
+  items OrderItem[]
+  totalAmount Decimal @db.Decimal(10,2)
+  shippingAmount Decimal @db.Decimal(10,2)
+  refundedAmount Decimal @default(0) @db.Decimal(10,2)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod String?
+  stripePaymentIntentId String? @unique
+  stripeSessionId String? @unique
+  checkoutKey String @unique
+  checkoutFingerprint String
+  shippingStatus ShippingStatus @default(NOT_SHIPPED)
+  shippingAddress Json
+  createdAt DateTime @default(now())
+  shippingUpdatedAt DateTime?
+  trackingNumber String?
+  notes String?
+  reservationExpiresAt DateTime
+  reservationState ReservationState @default(HELD)
+  @@index([createdAt])
+}
+model OrderItem {
+  id String @id @default(cuid())
+  orderId String
+  order Order @relation(fields:[orderId],references:[id])
+  variantId String
+  variant Variant @relation(fields:[variantId],references:[id])
+  productName String
+  color String
+  size String
+  quantity Int
+  unitPrice Decimal @db.Decimal(10,2)
+}
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+enum ShippingStatus {
+  NOT_SHIPPED
+  SHIPPED
+  DELIVERED
+}
+enum ReservationState {
+  HELD
+  CONSUMED
+  RELEASED
+}
+model ShopSettings {
+  id String @id @default("shop")
+  data Json
+}
+model WebhookEvent {
+  id String @id
+  createdAt DateTime @default(now())
+}
+model Notification {
+  id String @id @default(cuid())
+  key String @unique
+  channel String @default("email")
+  to String
+  subject String
+  body String
+  sentAt DateTime?
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+}
+model RateLimit {
+  id String @id
+  attempts Int @default(0)
+  resetAt DateTime
+}
