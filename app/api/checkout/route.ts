@@ -1,10 +1,207 @@
-import {z} from 'zod';
-import {createHash,randomUUID} from 'node:crypto';
-import {db,isDemo} from '@/lib/db';
-import {stripe} from '@/lib/stripe';
-import {settings} from '@/lib/settings';
-import {priceFor,cents} from '@/lib/pricing';
-import {ApiError,apiError,checkOrigin} from '@/lib/auth';
-import {limit} from '@/lib/limits';
-const schema=z.object({key:z.uuid(),email:z.email().max(254),name:z.string().trim().min(2).max(120),phone:z.string().max(40).optional(),address:z.object({street:z.string().trim().min(2).max(120),houseNr:z.string().trim().min(1).max(20),zip:z.string().trim().min(2).max(16),city:z.string().trim().min(2).max(100),country:z.enum(['DE','AT','CH'])}),items:z.array(z.object({variantId:z.string().max(100),quantity:z.number().int().min(1).max(20)})).min(1).max(30),terms:z.literal(true)});
-export async function POST(req:Request){try{checkOrigin(req);if(isDemo()||!process.env.STRIPE_SECRET_KEY)throw new ApiError('Vorschau: Zahlungen sind noch nicht eingerichtet.',503);const b=schema.parse(await req.json());const fingerprint=createHash('sha256').update(JSON.stringify({...b,key:undefined})).digest('hex');const prefs=await settings();if(!prefs.shippingCountries.includes(b.address.country))throw new ApiError('Dieses Lieferland wird derzeit nicht unterstützt.');await limit('checkout:'+b.email.toLowerCase(),15);const quantities=new Map<string,number>();for(const i of b.items)quantities.set(i.variantId,(quantities.get(i.variantId)??0)+i.quantity);if([...quantities.values()].some(q=>q>20))throw new ApiError('Maximal 20 Stück je Variante.');let order=await db.order.findUnique({where:{checkoutKey:b.key},include:{items:true}});if(order&&order.checkoutFingerprint!==fingerprint)throw new ApiError('Warenkorb geändert. Bitte Checkout erneut öffnen.',409);if(!order){order=await db.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${b.key}))`;const existing=await tx.order.findUnique({where:{checkoutKey:b.key},include:{items:true}});if(existing){if(existing.checkoutFingerprint!==fingerprint)throw new ApiError('Anfragekonflikt',409);return existing;}const items=[];let subtotal=0;for(const [id,quantity]of [...quantities].sort(([a],[b])=>a.localeCompare(b))){const v=await tx.variant.findUnique({where:{id},include:{product:true}});if(!v||!v.active||!v.product.active)throw new ApiError('Ein Artikel ist nicht mehr verfügbar.');const changed=await tx.$executeRaw`UPDATE "Variant" SET reserved=reserved+${quantity} WHERE id=${id} AND stock-reserved>=${quantity}`;if(changed!==1)throw new ApiError(`${v.product.name} (${v.size}) ist nicht mehr in ausreichender Menge verfügbar.`,409);const unitPrice=priceFor(v.product,v.priceOverride).price;subtotal+=cents(unitPrice)*quantity;items.push({variantId:id,quantity,unitPrice,productName:v.product.name,color:v.color,size:v.size});}const shipping=subtotal>=cents(prefs.freeShippingFrom)?0:prefs.shippingCost;const customer=await tx.customer.upsert({where:{email:b.email.toLowerCase()},create:{email:b.email.toLowerCase(),name:b.name,phone:b.phone,addresses:{create:b.address}},update:{name:b.name,phone:b.phone}});const created=await tx.order.create({data:{orderNumber:'pending-'+randomUUID(),customerId:customer.id,checkoutKey:b.key,checkoutFingerprint:fingerprint,totalAmount:(subtotal+cents(shipping))/100,shippingAmount:shipping,shippingAddress:{...b.address,name:b.name,email:b.email,phone:b.phone??''},reservationExpiresAt:new Date(Date.now()+35*60000),items:{create:items}},include:{items:true}});return tx.order.update({where:{id:created.id},data:{orderNumber:`BMR-${new Date().getUTCFullYear()}-${String(created.sequence).padStart(6,'0')}`},include:{items:true}});});}if(order.paymentStatus==='PAID')throw new ApiError('Diese Bestellung ist bereits bezahlt.',409);if(order.reservationState!=='HELD')throw new ApiError('Reservierung abgelaufen. Bitte Checkout erneut öffnen.',409);if(order.stripeSessionId){const s=await stripe().checkout.sessions.retrieve(order.stripeSessionId);if(s.url&&s.status==='open')return Response.json({url:s.url});throw new ApiError('Checkout ist abgeschlossen oder abgelaufen.',409);}const session=await stripe().checkout.sessions.create({mode:'payment',client_reference_id:order.id,customer_email:b.email,metadata:{orderId:order.id},payment_intent_data:{metadata:{orderId:order.id}},integration_identifier:'bigmamareps_checkout_bmrshopx',line_items:order.items.map(i=>({price_data:{currency:'eur',unit_amount:cents(i.unitPrice),product_data:{name:`${i.productName} · ${i.color} / ${i.size}`}},quantity:i.quantity})),shipping_options:[{shipping_rate_data:{type:'fixed_amount',fixed_amount:{amount:cents(order.shippingAmount),currency:'eur'},display_name:'Standardversand'}}],expires_at:Math.floor(+order.reservationExpiresAt/1000),success_url:`${process.env.APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${process.env.APP_URL}/checkout?cancelled=1`},{idempotencyKey:'checkout-'+order.id});await db.order.update({where:{id:order.id},data:{stripeSessionId:session.id}});return Response.json({url:session.url});}catch(e){if(e instanceof z.ZodError)return Response.json({error:'Bitte alle Felder und Artikel prüfen.'},{status:400});return apiError(e);}}
+import { z } from "zod";
+import { createHash, randomUUID } from "node:crypto";
+import { db, isDemo } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
+import { settings } from "@/lib/settings";
+import { priceFor, cents } from "@/lib/pricing";
+import { ApiError, apiError, checkOrigin } from "@/lib/auth";
+import { limit } from "@/lib/limits";
+const schema = z.object({
+  key: z.uuid(),
+  email: z.email().max(254),
+  name: z.string().trim().min(2).max(120),
+  phone: z.string().max(40).optional(),
+  address: z.object({
+    street: z.string().trim().min(2).max(120),
+    houseNr: z.string().trim().min(1).max(20),
+    zip: z.string().trim().min(2).max(16),
+    city: z.string().trim().min(2).max(100),
+    country: z.enum(["DE", "AT", "CH"]),
+  }),
+  items: z
+    .array(
+      z.object({
+        variantId: z.string().max(100),
+        quantity: z.number().int().min(1).max(20),
+      }),
+    )
+    .min(1)
+    .max(30),
+  terms: z.literal(true),
+});
+export async function POST(req: Request) {
+  try {
+    checkOrigin(req);
+    if (isDemo() || !process.env.STRIPE_SECRET_KEY)
+      throw new ApiError(
+        "Vorschau: Zahlungen sind noch nicht eingerichtet.",
+        503,
+      );
+    const b = schema.parse(await req.json());
+    const fingerprint = createHash("sha256")
+      .update(JSON.stringify({ ...b, key: undefined }))
+      .digest("hex");
+    const prefs = await settings();
+    if (!prefs.shippingCountries.includes(b.address.country))
+      throw new ApiError("Dieses Lieferland wird derzeit nicht unterstützt.");
+    await limit("checkout:" + b.email.toLowerCase(), 15);
+    const quantities = new Map<string, number>();
+    for (const i of b.items)
+      quantities.set(
+        i.variantId,
+        (quantities.get(i.variantId) ?? 0) + i.quantity,
+      );
+    if ([...quantities.values()].some((q) => q > 20))
+      throw new ApiError("Maximal 20 Stück je Variante.");
+    let order = await db.order.findUnique({
+      where: { checkoutKey: b.key },
+      include: { items: true },
+    });
+    if (order && order.checkoutFingerprint !== fingerprint)
+      throw new ApiError(
+        "Warenkorb geändert. Bitte Checkout erneut öffnen.",
+        409,
+      );
+    if (!order) {
+      order = await db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${b.key}))`;
+        const existing = await tx.order.findUnique({
+          where: { checkoutKey: b.key },
+          include: { items: true },
+        });
+        if (existing) {
+          if (existing.checkoutFingerprint !== fingerprint)
+            throw new ApiError("Anfragekonflikt", 409);
+          return existing;
+        }
+        const items = [];
+        let subtotal = 0;
+        for (const [id, quantity] of [...quantities].sort(([a], [b]) =>
+          a.localeCompare(b),
+        )) {
+          const v = await tx.variant.findUnique({
+            where: { id },
+            include: { product: true },
+          });
+          if (!v || !v.active || !v.product.active)
+            throw new ApiError("Ein Artikel ist nicht mehr verfügbar.");
+          const changed =
+            await tx.$executeRaw`UPDATE "Variant" SET reserved=reserved+${quantity} WHERE id=${id} AND stock-reserved>=${quantity}`;
+          if (changed !== 1)
+            throw new ApiError(
+              `${v.product.name} (${v.size}) ist nicht mehr in ausreichender Menge verfügbar.`,
+              409,
+            );
+          const unitPrice = priceFor(v.product, v.priceOverride).price;
+          subtotal += cents(unitPrice) * quantity;
+          items.push({
+            variantId: id,
+            quantity,
+            unitPrice,
+            productName: v.product.name,
+            color: v.color,
+            size: v.size,
+          });
+        }
+        const shipping =
+          subtotal >= cents(prefs.freeShippingFrom) ? 0 : prefs.shippingCost;
+        const customer = await tx.customer.upsert({
+          where: { email: b.email.toLowerCase() },
+          create: {
+            email: b.email.toLowerCase(),
+            name: b.name,
+            phone: b.phone,
+            addresses: { create: b.address },
+          },
+          update: { name: b.name, phone: b.phone },
+        });
+        const created = await tx.order.create({
+          data: {
+            orderNumber: "pending-" + randomUUID(),
+            customerId: customer.id,
+            checkoutKey: b.key,
+            checkoutFingerprint: fingerprint,
+            totalAmount: (subtotal + cents(shipping)) / 100,
+            shippingAmount: shipping,
+            shippingAddress: {
+              ...b.address,
+              name: b.name,
+              email: b.email,
+              phone: b.phone ?? "",
+            },
+            reservationExpiresAt: new Date(Date.now() + 35 * 60000),
+            items: { create: items },
+          },
+          include: { items: true },
+        });
+        return tx.order.update({
+          where: { id: created.id },
+          data: {
+            orderNumber: `BMR-${new Date().getUTCFullYear()}-${String(created.sequence).padStart(6, "0")}`,
+          },
+          include: { items: true },
+        });
+      });
+    }
+    if (order.paymentStatus === "PAID")
+      throw new ApiError("Diese Bestellung ist bereits bezahlt.", 409);
+    if (order.reservationState !== "HELD")
+      throw new ApiError(
+        "Reservierung abgelaufen. Bitte Checkout erneut öffnen.",
+        409,
+      );
+    if (order.stripeSessionId) {
+      const s = await stripe().checkout.sessions.retrieve(
+        order.stripeSessionId,
+      );
+      if (s.url && s.status === "open") return Response.json({ url: s.url });
+      throw new ApiError("Checkout ist abgeschlossen oder abgelaufen.", 409);
+    }
+    const session = await stripe().checkout.sessions.create(
+      {
+        mode: "payment",
+        client_reference_id: order.id,
+        customer_email: b.email,
+        metadata: { orderId: order.id },
+        payment_intent_data: { metadata: { orderId: order.id } },
+        integration_identifier: "bigmamareps_checkout_bmrshopx",
+        line_items: order.items.map((i) => ({
+          price_data: {
+            currency: "eur",
+            unit_amount: cents(i.unitPrice),
+            product_data: { name: `${i.productName} · ${i.color} / ${i.size}` },
+          },
+          quantity: i.quantity,
+        })),
+        shipping_options: [
+          {
+            shipping_rate_data: {
+              type: "fixed_amount",
+              fixed_amount: {
+                amount: cents(order.shippingAmount),
+                currency: "eur",
+              },
+              display_name: "Standardversand",
+            },
+          },
+        ],
+        expires_at: Math.floor(+order.reservationExpiresAt / 1000),
+        success_url: `${process.env.APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.APP_URL}/checkout?cancelled=1`,
+      },
+      { idempotencyKey: "checkout-" + order.id },
+    );
+    await db.order.update({
+      where: { id: order.id },
+      data: { stripeSessionId: session.id },
+    });
+    return Response.json({ url: session.url });
+  } catch (e) {
+    if (e instanceof z.ZodError)
+      return Response.json(
+        { error: "Bitte alle Felder und Artikel prüfen." },
+        { status: 400 },
+      );
+    return apiError(e);
+  }
+}

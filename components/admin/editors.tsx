@@ -332,7 +332,15 @@ export function ProductEditor({ initial }: { initial?: ShopProduct }) {
                 value={p.name}
                 onChange={(e) => {
                   field("name", e.target.value);
-                  if (!p.id && !p.slug)
+                  if (
+                    !p.id &&
+                    (!p.slug ||
+                      p.slug ===
+                        p.name
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]+/g, "-")
+                          .replace(/^-|-$/g, ""))
+                  )
                     field(
                       "slug",
                       e.target.value
@@ -432,7 +440,7 @@ export function ProductEditor({ initial }: { initial?: ShopProduct }) {
                 </thead>
                 <tbody>
                   {p.variants.map((v, i) => (
-                    <tr key={v.id || v.sku}>
+                    <tr key={v.id || `new-${i}`}>
                       <td>
                         <input
                           type="checkbox"

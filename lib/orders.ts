@@ -1,9 +1,144 @@
-import {db} from './db';
-import {stripe} from './stripe';
-import {enqueue} from './notifications';
-import {settings} from './settings';
-import {money,cents} from './pricing';
-import type {Prisma} from '@prisma/client';
-export async function lockOrder(tx:Prisma.TransactionClient,id:string){await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${id}))`;}
-export async function releaseOrder(orderId:string){await db.$transaction(async tx=>{await lockOrder(tx,orderId);const o=await tx.order.findUniqueOrThrow({where:{id:orderId},include:{items:true}});if(o.reservationState!=='HELD'||o.paymentStatus==='PAID'||o.paymentStatus==='REFUNDED')return;for(const i of o.items)await tx.variant.update({where:{id:i.variantId},data:{reserved:{decrement:i.quantity}}});await tx.order.update({where:{id:orderId},data:{reservationState:'RELEASED',paymentStatus:'FAILED'}});});}
-export async function fulfillOrder(orderId:string,paymentIntentId:string,eventId:string){const pi=await stripe().paymentIntents.retrieve(paymentIntentId,{expand:['latest_charge']});if(pi.status!=='succeeded')return;const charge=typeof pi.latest_charge==='object'?pi.latest_charge:null;const prefs=await settings();await db.$transaction(async tx=>{await lockOrder(tx,orderId);if(await tx.webhookEvent.findUnique({where:{id:eventId}}))return;const o=await tx.order.findUniqueOrThrow({where:{id:orderId},include:{items:true,customer:true}});if(pi.currency!=='eur'||pi.amount_received!==cents(o.totalAmount)||pi.metadata.orderId!==o.id)throw new Error('Payment mismatch');if(o.paymentStatus!=='PAID'&&o.paymentStatus!=='REFUNDED'){if(o.reservationState!=='HELD')throw new Error('Payment received without reservation; operator review required');for(const i of o.items){const updated=await tx.variant.updateMany({where:{id:i.variantId,stock:{gte:i.quantity},reserved:{gte:i.quantity}},data:{stock:{decrement:i.quantity},reserved:{decrement:i.quantity}}});if(updated.count!==1)throw new Error('Inventory mismatch');}await tx.order.update({where:{id:o.id},data:{paymentStatus:'PAID',reservationState:'CONSUMED',stripePaymentIntentId:pi.id,paymentMethod:charge?.payment_method_details?.type??'unknown'}});const summary=o.items.map(i=>`${i.quantity} × ${i.productName} (${i.color}, ${i.size}) – ${money(Number(i.unitPrice)*i.quantity)}`).join('\n');await enqueue(tx,`${o.id}:customer`,o.customer.email,`Deine Bestellung ${o.orderNumber}`,`Hallo ${o.customer.name},\n\ndeine Zahlung ist eingegangen.\n${summary}\nVersand: ${money(Number(o.shippingAmount))}\nGesamt: ${money(Number(o.totalAmount))}\n\nDanke für deine Bestellung bei BigMamaReps.`);if(prefs.emailNotifications&&process.env.ADMIN_EMAIL)await enqueue(tx,`${o.id}:admin`,process.env.ADMIN_EMAIL,`Neue Bestellung ${o.orderNumber}`,`${o.orderNumber}\n${o.customer.name}\n${money(Number(o.totalAmount))}\n${process.env.APP_URL}/admin/orders/${o.id}`);if(prefs.telegramNotifications&&process.env.TELEGRAM_CHAT_ID)await enqueue(tx,`${o.id}:telegram`,process.env.TELEGRAM_CHAT_ID,'Neue Bestellung',`${o.orderNumber} · ${money(Number(o.totalAmount))}\n${process.env.APP_URL}/admin/orders/${o.id}`,'telegram');}await tx.webhookEvent.create({data:{id:eventId}});});}
+import { db } from "./db";
+import { stripe } from "./stripe";
+import { enqueue } from "./notifications";
+import { settings } from "./settings";
+import { money, cents } from "./pricing";
+import type { Prisma } from "@prisma/client";
+export async function lockOrder(tx: Prisma.TransactionClient, id: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${id}))`;
+}
+export async function releaseOrder(orderId: string) {
+  await db.$transaction(async (tx) => {
+    await lockOrder(tx, orderId);
+    const o = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (
+      o.reservationState !== "HELD" ||
+      o.paymentStatus === "PAID" ||
+      o.paymentStatus === "REFUNDED"
+    )
+      return;
+    for (const i of o.items)
+      await tx.variant.update({
+        where: { id: i.variantId },
+        data: { reserved: { decrement: i.quantity } },
+      });
+    await tx.order.update({
+      where: { id: orderId },
+      data: { reservationState: "RELEASED", paymentStatus: "FAILED" },
+    });
+  });
+}
+export async function fulfillOrder(
+  orderId: string,
+  paymentIntentId: string,
+  eventId: string,
+) {
+  const pi = await stripe().paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge"],
+  });
+  if (pi.status !== "succeeded") return;
+  const charge = typeof pi.latest_charge === "object" ? pi.latest_charge : null;
+  const prefs = await settings();
+  await db.$transaction(async (tx) => {
+    await lockOrder(tx, orderId);
+    if (await tx.webhookEvent.findUnique({ where: { id: eventId } })) return;
+    const o = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { items: true, customer: true },
+    });
+    if (
+      pi.currency !== "eur" ||
+      pi.amount_received !== cents(o.totalAmount) ||
+      pi.metadata.orderId !== o.id
+    )
+      throw new Error("Payment mismatch");
+    if (o.paymentStatus !== "PAID" && o.paymentStatus !== "REFUNDED") {
+      if (o.reservationState !== "HELD")
+        throw new Error(
+          "Payment received without reservation; operator review required",
+        );
+      for (const i of o.items) {
+        const updated = await tx.variant.updateMany({
+          where: {
+            id: i.variantId,
+            stock: { gte: i.quantity },
+            reserved: { gte: i.quantity },
+          },
+          data: {
+            stock: { decrement: i.quantity },
+            reserved: { decrement: i.quantity },
+          },
+        });
+        if (updated.count !== 1) throw new Error("Inventory mismatch");
+      }
+      await tx.order.update({
+        where: { id: o.id },
+        data: {
+          paymentStatus: "PAID",
+          reservationState: "CONSUMED",
+          stripePaymentIntentId: pi.id,
+          paymentMethod: charge?.payment_method_details?.type ?? "unknown",
+        },
+      });
+      const summary = o.items
+        .map(
+          (i) =>
+            `${i.quantity} × ${i.productName} (${i.color}, ${i.size}) – ${money(Number(i.unitPrice) * i.quantity)}`,
+        )
+        .join("\n");
+      await enqueue(
+        tx,
+        `${o.id}:customer`,
+        o.customer.email,
+        `Deine Bestellung ${o.orderNumber}`,
+        `Hallo ${o.customer.name},\n\ndeine Zahlung ist eingegangen.\n${summary}\nVersand: ${money(Number(o.shippingAmount))}\nGesamt: ${money(Number(o.totalAmount))}\n\nDanke für deine Bestellung bei BigMamaReps.`,
+      );
+      if (prefs.emailNotifications && process.env.ADMIN_EMAIL)
+        await enqueue(
+          tx,
+          `${o.id}:admin`,
+          process.env.ADMIN_EMAIL,
+          `Neue Bestellung ${o.orderNumber}`,
+          `${o.orderNumber}\n${o.customer.name}\n${money(Number(o.totalAmount))}\n${process.env.APP_URL}/admin/orders/${o.id}`,
+        );
+      if (prefs.telegramNotifications && process.env.TELEGRAM_CHAT_ID)
+        await enqueue(
+          tx,
+          `${o.id}:telegram`,
+          process.env.TELEGRAM_CHAT_ID,
+          "Neue Bestellung",
+          `${o.orderNumber} · ${money(Number(o.totalAmount))}\n${process.env.APP_URL}/admin/orders/${o.id}`,
+          "telegram",
+        );
+    }
+    await tx.webhookEvent.create({ data: { id: eventId } });
+  });
+}
+
+/** Refund events may arrive before checkout completion or in reverse order. */
+export async function syncRefund(paymentIntentId: string, eventId: string) {
+  const pi = await stripe().paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge"],
+  });
+  const orderId = pi.metadata.orderId;
+  const charge = typeof pi.latest_charge === "object" ? pi.latest_charge : null;
+  if (!orderId || !charge) return;
+  await fulfillOrder(orderId, pi.id, `${eventId}:payment`);
+  await db.$transaction(async (tx) => {
+    await lockOrder(tx, orderId);
+    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+    await tx.order.update({
+      where: { id: orderId },
+      data: {
+        refundedAmount: Math.max(
+          Number(order.refundedAmount),
+          charge.amount_refunded / 100,
+        ),
+        ...(charge.refunded ? { paymentStatus: "REFUNDED" as const } : {}),
+      },
+    });
+  });
+}

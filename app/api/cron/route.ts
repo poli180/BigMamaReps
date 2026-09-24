@@ -1,5 +1,55 @@
-import {db} from '@/lib/db';
-import {stripe} from '@/lib/stripe';
-import {releaseOrder,fulfillOrder} from '@/lib/orders';
-import {deliverNotifications} from '@/lib/notifications';
-export async function GET(req:Request){if(!process.env.CRON_SECRET||req.headers.get('authorization')!==`Bearer ${process.env.CRON_SECRET}`)return new Response('Unauthorized',{status:401});const held=await db.order.findMany({where:{reservationState:'HELD',reservationExpiresAt:{lt:new Date()}},take:100});let unresolved=0;for(const o of held){let sid=o.stripeSessionId;if(!sid){for await(const s of stripe().checkout.sessions.list({created:{gte:Math.floor(+o.createdAt/1000)-60,lte:Math.floor(+o.reservationExpiresAt/1000)+60},limit:100})){if(s.client_reference_id===o.id){sid=s.id;await db.order.update({where:{id:o.id},data:{stripeSessionId:s.id}});break;}}}if(!sid){unresolved++;continue;}const s=await stripe().checkout.sessions.retrieve(sid);if(s.status==='expired')await releaseOrder(o.id);else if(s.payment_status==='paid'&&typeof s.payment_intent==='string')await fulfillOrder(o.id,s.payment_intent,'reconcile:'+s.id);}return Response.json({notificationsSent:await deliverNotifications(),unresolvedReservations:unresolved});}
+import { db } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
+import { releaseOrder, fulfillOrder } from "@/lib/orders";
+import { deliverNotifications } from "@/lib/notifications";
+export async function GET(req: Request) {
+  if (
+    !process.env.CRON_SECRET ||
+    req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
+  )
+    return new Response("Unauthorized", { status: 401 });
+  const held = await db.order.findMany({
+    where: {
+      reservationState: "HELD",
+      reservationExpiresAt: { lt: new Date() },
+    },
+    take: 100,
+  });
+  let unresolved = 0;
+  for (const o of held) {
+    let sid = o.stripeSessionId;
+    if (!sid) {
+      for await (const s of stripe().checkout.sessions.list({
+        created: {
+          gte: Math.floor(+o.createdAt / 1000) - 60,
+          lte: Math.floor(+o.reservationExpiresAt / 1000) + 60,
+        },
+        limit: 100,
+      })) {
+        if (s.client_reference_id === o.id) {
+          sid = s.id;
+          await db.order.update({
+            where: { id: o.id },
+            data: { stripeSessionId: s.id },
+          });
+          break;
+        }
+      }
+    }
+    if (!sid) {
+      unresolved++;
+      continue;
+    }
+    const s = await stripe().checkout.sessions.retrieve(sid);
+    if (s.status === "expired") await releaseOrder(o.id);
+    else if (
+      s.payment_status === "paid" &&
+      typeof s.payment_intent === "string"
+    )
+      await fulfillOrder(o.id, s.payment_intent, "reconcile:" + s.id);
+  }
+  return Response.json({
+    notificationsSent: await deliverNotifications(),
+    unresolvedReservations: unresolved,
+  });
+}
