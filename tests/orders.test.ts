@@ -14,6 +14,20 @@ let release: typeof import("../lib/orders").releaseOrder;
 let webhook: typeof import("../app/api/webhooks/stripe/route").POST;
 let stripeClient: ReturnType<typeof import("../lib/stripe").stripe>;
 let sessionSequence = 0;
+test("catalog revision changes durably and public status is never cached", async () => {
+  const { catalogRevision, catalogChanged } =
+    await import("../lib/catalog-revision");
+  const { GET } = await import("../app/api/shop/version/route");
+  const before = await catalogRevision();
+  await catalogChanged();
+  const after = await catalogRevision();
+  assert.notEqual(after, before);
+  const response = await GET();
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { revision: after });
+  await catalogChanged();
+  assert.notEqual(await catalogRevision(), after);
+});
 test("supplier import creates 24 unavailable drafts and preserves edits on repeat", async () => {
   const { importSupplierCatalog } = await import("../lib/import-supplier");
   const first = await importSupplierCatalog();

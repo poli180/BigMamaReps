@@ -1,3 +1,4 @@
+import { catalogChanged } from "@/lib/catalog-revision";
 import { adminApi, apiError, ApiError } from "@/lib/auth";
 import { isDemo } from "@/lib/db";
 import { importSupplierCatalog } from "@/lib/import-supplier";
@@ -9,7 +10,9 @@ export async function POST(req: Request) {
         "Bitte zuerst die produktive Datenbank verbinden.",
         503,
       );
-    return Response.json(await importSupplierCatalog());
+    const result = await importSupplierCatalog();
+    await catalogChanged();
+    return Response.json(result);
   } catch (e) {
     return apiError(e);
   }

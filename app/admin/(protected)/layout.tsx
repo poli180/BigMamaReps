@@ -11,5 +11,16 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   await requireAdmin();
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <AdminShell>
+      {process.env.NODE_ENV === "development" && (
+        <p className="demo-banner">
+          Lokaler Admin: Änderungen gelten für die hier verbundene Datenbank.
+          Für den öffentlichen Shop den Admin auf deiner Vercel-Domain
+          verwenden.
+        </p>
+      )}
+      {children}
+    </AdminShell>
+  );
 }

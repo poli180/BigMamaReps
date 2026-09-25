@@ -1,4 +1,5 @@
 "use client";
+import { saveRequest } from "./save-request";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 export function ProductToggle({ id, active }: { id: string; active: boolean }) {
@@ -14,7 +15,7 @@ export function ProductToggle({ id, active }: { id: string; active: boolean }) {
           setBusy(true);
           setError("");
           try {
-            const r = await fetch("/api/admin/products", {
+            const r = await saveRequest("/api/admin/products", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id, active: !active }),
@@ -52,7 +53,7 @@ export function BulkSale({
           setBusy(true);
           setMessage("");
           try {
-            const r = await fetch("/api/admin/sales", {
+            const r = await saveRequest("/api/admin/sales", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

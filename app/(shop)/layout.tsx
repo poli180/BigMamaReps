@@ -1,3 +1,5 @@
+import { LiveUpdates } from "@/components/shop/live-updates";
+import { catalogRevision } from "@/lib/catalog-revision";
 import Link from "next/link";
 import { categories } from "@/lib/categories";
 import { ScrollProgress } from "@/components/shop/motion";
@@ -11,7 +13,11 @@ export default async function ShopLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [s, categoryList] = await Promise.all([settings(), categories()]);
+  const [s, categoryList, revision] = await Promise.all([
+    settings(),
+    categories(),
+    catalogRevision(),
+  ]);
   return (
     <div
       style={
@@ -29,6 +35,7 @@ export default async function ShopLayout({
           Zum Inhalt
         </a>
         <ScrollProgress />
+        <LiveUpdates revision={revision} />
         <Header
           announcement={s.announcement}
           logoUrl={s.logoUrl}

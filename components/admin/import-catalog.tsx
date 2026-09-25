@@ -1,4 +1,5 @@
 "use client";
+import { saveRequest } from "./save-request";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 export function ImportCatalog() {
@@ -9,7 +10,9 @@ export function ImportCatalog() {
     setBusy(true);
     setMessage("");
     try {
-      const r = await fetch("/api/admin/import-catalog", { method: "POST" });
+      const r = await saveRequest("/api/admin/import-catalog", {
+        method: "POST",
+      });
       const data = await r.json();
       if (!r.ok) throw Error(data.error);
       setMessage(

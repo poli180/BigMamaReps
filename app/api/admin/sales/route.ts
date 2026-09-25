@@ -1,3 +1,4 @@
+import { catalogChanged } from "@/lib/catalog-revision";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { adminApi, apiError } from "@/lib/auth";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
           },
         });
     });
+    await catalogChanged();
     return Response.json({ ok: true });
   } catch (e) {
     if (e instanceof z.ZodError)

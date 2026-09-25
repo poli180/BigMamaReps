@@ -1,12 +1,15 @@
+import { catalogChanged } from "@/lib/catalog-revision";
 import { adminApi, apiError } from "@/lib/auth";
 import { saveCategory, deleteCategory } from "@/lib/category-actions";
 import { z } from "zod";
 async function action(req: Request, remove = false) {
   try {
     await adminApi(req);
-    return Response.json(
-      await (remove ? deleteCategory : saveCategory)(await req.json()),
+    const result = await (remove ? deleteCategory : saveCategory)(
+      await req.json(),
     );
+    await catalogChanged();
+    return Response.json(result);
   } catch (e) {
     if (e instanceof z.ZodError)
       return Response.json(

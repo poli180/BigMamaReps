@@ -1,3 +1,4 @@
+import { catalogChanged } from "@/lib/catalog-revision";
 import { adminApi, apiError } from "@/lib/auth";
 import { settingsInput } from "@/lib/validation";
 import { db } from "@/lib/db";
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
       create: { id: "shop", data },
       update: { data },
     });
+    await catalogChanged();
     return Response.json({ ok: true });
   } catch (e) {
     if (e instanceof z.ZodError)

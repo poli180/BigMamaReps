@@ -1,4 +1,5 @@
 "use client";
+import { saveRequest } from "./save-request";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Pencil, ArrowUpRight, Layers3 } from "lucide-react";
@@ -24,7 +25,7 @@ export function CategoryManager({ initial }: { initial: Category[] }) {
     setBusy(true);
     setMessage("");
     try {
-      const r = await fetch("/api/admin/categories", {
+      const r = await saveRequest("/api/admin/categories", {
         method: remove ? "DELETE" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(remove ? { id: deleting?.id, moveTo } : draft),

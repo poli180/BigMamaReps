@@ -1,4 +1,5 @@
 "use client";
+import { saveRequest } from "./save-request";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -19,7 +20,7 @@ import type { Settings } from "@/lib/settings";
 import { priceFor, money } from "@/lib/pricing";
 type Message = { error?: string; ok?: string };
 async function save(url: string, data: unknown) {
-  const r = await fetch(url, {
+  const r = await saveRequest(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
