@@ -106,10 +106,18 @@ export function ProductDetail({
         <p className="eyebrow">{p.category} / THE EVERYDAY COLLECTION</p>
         <h1>{p.name}</h1>
         <div className="detail-price">
-          <strong>{money(price.price)}</strong>
+          <strong>
+            {p.id.startsWith("supplier-") && p.basePrice === 0
+              ? "Preis folgt"
+              : money(price.price)}
+          </strong>
           {price.onSale && <del>{money(price.original)}</del>}
         </div>
-        <p className="muted">Endpreis zzgl. Versandkosten</p>
+        <p className="muted">
+          {p.id.startsWith("supplier-") && p.basePrice === 0
+            ? "Preis und Verfügbarkeit werden noch bestätigt."
+            : "Endpreis zzgl. Versandkosten"}
+        </p>
         <div
           className="rich-copy"
           dangerouslySetInnerHTML={{ __html: p.description }}
@@ -185,7 +193,11 @@ export function ProductDetail({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reduced ? 0 : 0.2 }}
           >
-            {added ? "Im Warenkorb" : "In den Warenkorb"}
+            {p.id.startsWith("supplier-") && p.basePrice === 0
+              ? "Demnächst verfügbar"
+              : added
+                ? "Im Warenkorb"
+                : "In den Warenkorb"}
           </motion.span>
         </button>
         <div className="detail-benefits">

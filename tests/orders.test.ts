@@ -14,6 +14,34 @@ let release: typeof import("../lib/orders").releaseOrder;
 let webhook: typeof import("../app/api/webhooks/stripe/route").POST;
 let stripeClient: ReturnType<typeof import("../lib/stripe").stripe>;
 let sessionSequence = 0;
+test("supplier import creates 24 unavailable drafts and preserves edits on repeat", async () => {
+  const { importSupplierCatalog } = await import("../lib/import-supplier");
+  const first = await importSupplierCatalog();
+  assert.equal(first.created, 24);
+  const rows = await db.product.findMany({
+    where: { id: { startsWith: "supplier-" } },
+    include: { variants: true },
+  });
+  assert.equal(rows.length, 24);
+  assert.ok(
+    rows.every(
+      (p) =>
+        !p.active &&
+        Number(p.basePrice) === 0 &&
+        p.variants.every((v) => v.stock === 0),
+    ),
+  );
+  await db.product.update({
+    where: { id: rows[0].id },
+    data: { name: "Eigener Titel", basePrice: 89 },
+  });
+  assert.equal((await importSupplierCatalog()).created, 0);
+  const edited = await db.product.findUniqueOrThrow({
+    where: { id: rows[0].id },
+  });
+  assert.equal(edited.name, "Eigener Titel");
+  assert.equal(Number(edited.basePrice), 89);
+});
 const sessions = new Map<string, any>();
 const payments = new Map<string, any>();
 before(async () => {

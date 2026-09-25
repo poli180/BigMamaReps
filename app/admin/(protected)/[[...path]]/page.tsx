@@ -1,3 +1,4 @@
+import { ImportCatalog } from "@/components/admin/import-catalog";
 import Link from "next/link";
 import { categories } from "@/lib/categories";
 import { CategoryManager } from "@/components/admin/categories";
@@ -280,6 +281,7 @@ export default async function AdminPage({
           }
         />
         <section className="panel">
+          <ImportCatalog />
           <form className="admin-filters">
             <input
               name="q"

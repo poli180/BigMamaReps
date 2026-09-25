@@ -1,32 +1,21 @@
 import { db } from "../lib/db";
-import { demoProducts } from "../lib/catalog";
+import { importSupplierCatalog } from "../lib/import-supplier";
 import { defaults } from "../lib/settings";
 async function main() {
-  for (const p of demoProducts) {
-    const { id, variants, sold, ...data } = p;
-    await db.category.upsert({ where: { name: p.category }, update: {}, create: { name: p.category } });
-    await db.product.upsert({
-      where: { slug: p.slug },
-      update: {},
-      create: {
-        ...data,
-        id,
-        variants: {
-          create: variants.map(({ images, ...v }) => ({
-            ...v,
-            images: { create: images },
-          })),
-        },
-      },
-    });
-  }
+  const result = await importSupplierCatalog();
   await db.shopSettings.upsert({
     where: { id: "shop" },
     update: {},
     create: { id: "shop", data: defaults },
   });
   console.log(
-    "Beispielkatalog angelegt. Produktbilder und Angaben vor Verkauf ersetzen.",
+    result.created +
+      " Lieferantenprodukte als inaktive Entwürfe importiert. Preise, Größen und Bestände vor Veröffentlichung ergänzen.",
   );
 }
-main().finally(() => db.$disconnect());
+main()
+  .catch((e) => {
+    console.error(e.name);
+    process.exitCode = 1;
+  })
+  .finally(() => db.$disconnect());

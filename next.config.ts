@@ -3,6 +3,7 @@ const config: NextConfig = {
   output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
   images: {
     remotePatterns: [
+      { protocol: "https", hostname: "photo.yupoo.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
       ...(process.env.STORAGE_BUCKET_URL
         ? [

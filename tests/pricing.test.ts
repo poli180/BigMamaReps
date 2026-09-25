@@ -27,7 +27,7 @@ test("variant overrides cannot be raised by an advertised sale", () => {
   assert.equal(priceFor({ ...p, salePrice: null }, null, now).price, 100);
 });
 test("product validation rejects negative stock, invalid sales, duplicates and malicious html", () => {
-  const p = demoProducts[0];
+  const p = { ...demoProducts[0], basePrice: 100, onSale: true, salePrice: 75 };
   assert.equal(productInput.safeParse(p).success, true);
   assert.equal(
     productInput.safeParse({

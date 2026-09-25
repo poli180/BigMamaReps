@@ -79,7 +79,9 @@ export function ProductCard({ product: p }: { product: ShopProduct }) {
       <div className="between">
         <div className="product-price">
           <span className={price.onSale ? "sale-price" : ""}>
-            {money(price.price)}
+            {p.id.startsWith("supplier-") && p.basePrice === 0
+              ? "Preis folgt"
+              : money(price.price)}
           </span>
           {price.onSale && <del>{money(price.original)}</del>}
         </div>

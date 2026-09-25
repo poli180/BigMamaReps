@@ -36,7 +36,8 @@ export default async function ShopLayout({
         />
         {(isDemo() || process.env.SHOP_PREVIEW === "true") && (
           <div className="demo-banner">
-            SHOP-VORSCHAU · Beispielprodukte · Kein echter Kauf möglich
+            KATALOG-VORSCHAU · Preise und Verfügbarkeit folgen · Kein Kauf
+            möglich
           </div>
         )}
         <main id="main">{children}</main>
