@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./admin/admin.css";
 import "./upgrade.css";
+import "./interactions.css";
 export const metadata: Metadata = {
   title: {
     default: "BigMamaReps — Wear it your way.",

@@ -1,9 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ShopProduct } from "@/lib/catalog";
 import { priceFor } from "@/lib/pricing";
 import { ProductCard } from "./product-card";
-import { Reveal } from "./motion";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+} from "framer-motion";
 import { SlidersHorizontal, X } from "lucide-react";
 export function CatalogGrid({
   products,
@@ -20,6 +25,8 @@ export function CatalogGrid({
   saleOnly?: boolean;
   initialSort?: string;
 }) {
+  const groupId = useId();
+  const reduced = useReducedMotion();
   const [category, setCategory] = useState(initialCategory);
   const [q, setQ] = useState(initialQuery);
   const [size, setSize] = useState("");
@@ -69,23 +76,47 @@ export function CatalogGrid({
   };
   return (
     <>
-      <div className="category-pills">
-        <button
-          className={!category ? "selected" : ""}
-          onClick={() => setCategory("")}
-        >
-          Alle Produkte
-        </button>
-        {categories.map((c) => (
+      <LayoutGroup id={groupId}>
+        <div className="category-pills catalog-categories">
           <button
-            key={c}
-            className={category === c ? "selected" : ""}
-            onClick={() => setCategory(c)}
+            className={!category ? "selected" : ""}
+            aria-pressed={!category}
+            onClick={() => setCategory("")}
           >
-            {c}
+            {!category && (
+              <motion.span
+                className="category-indicator"
+                layoutId="selected-category"
+                transition={{
+                  duration: reduced ? 0 : 0.28,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              />
+            )}
+            <span className="category-label">Alle Produkte</span>
           </button>
-        ))}
-      </div>
+          {categories.map((c) => (
+            <button
+              key={c}
+              className={category === c ? "selected" : ""}
+              aria-pressed={category === c}
+              onClick={() => setCategory(c)}
+            >
+              {category === c && (
+                <motion.span
+                  className="category-indicator"
+                  layoutId="selected-category"
+                  transition={{
+                    duration: reduced ? 0 : 0.28,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                />
+              )}
+              <span className="category-label">{c}</span>
+            </button>
+          ))}
+        </div>
+      </LayoutGroup>
       <div className="catalog-toolbar">
         <button
           className="filter-toggle"
@@ -94,7 +125,17 @@ export function CatalogGrid({
         >
           <SlidersHorizontal size={16} /> Filter {filters && <X size={14} />}
         </button>
-        <span className="muted">{filtered.length} Produkte</span>
+        <span className="muted result-count" role="status" aria-live="polite">
+          <motion.span
+            key={filtered.length}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduced ? 0 : 0.2 }}
+          >
+            {filtered.length}
+          </motion.span>{" "}
+          Produkte
+        </span>
         <label className="sort">
           Sortieren nach{" "}
           <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -106,66 +147,92 @@ export function CatalogGrid({
           </select>
         </label>
       </div>
-      {filters && (
-        <div className="filters">
-          <label>
-            Suche
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Produktname"
-            />
-          </label>
-          <label>
-            Größe
-            <select value={size} onChange={(e) => setSize(e.target.value)}>
-              <option value="">Alle Größen</option>
-              {sizes.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Farbe
-            <select value={color} onChange={(e) => setColor(e.target.value)}>
-              <option value="">Alle Farben</option>
-              {colors.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Preis bis {max} €
-            <input
-              type="range"
-              min="10"
-              max="500"
-              step="5"
-              value={max}
-              onChange={(e) => setMax(+e.target.value)}
-            />
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={sale}
-              disabled={saleOnly}
-              onChange={(e) => setSale(e.target.checked)}
-            />
-            Nur Sale
-          </label>
-          <button className="text-btn" onClick={reset}>
-            Zurücksetzen
-          </button>
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {filters && (
+          <motion.div
+            className="filter-reveal"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: reduced ? 0 : 0.25 }}
+          >
+            <div className="filters">
+              <label>
+                Suche
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Produktname"
+                />
+              </label>
+              <label>
+                Größe
+                <select value={size} onChange={(e) => setSize(e.target.value)}>
+                  <option value="">Alle Größen</option>
+                  {sizes.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Farbe
+                <select
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                >
+                  <option value="">Alle Farben</option>
+                  {colors.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Preis bis {max} €
+                <input
+                  type="range"
+                  min="10"
+                  max="500"
+                  step="5"
+                  value={max}
+                  onChange={(e) => setMax(+e.target.value)}
+                />
+              </label>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={sale}
+                  disabled={saleOnly}
+                  onChange={(e) => setSale(e.target.checked)}
+                />
+                Nur Sale
+              </label>
+              <button className="text-btn" onClick={reset}>
+                Zurücksetzen
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {filtered.length ? (
         <div className="product-grid">
-          {filtered.map((p, i) => (
-            <Reveal key={p.id} delay={Math.min(i, 3) * 0.05}>
-              <ProductCard product={p} />
-            </Reveal>
-          ))}
+          <AnimatePresence mode="popLayout">
+            {filtered.map((p) => (
+              <motion.div
+                className="catalog-card-motion"
+                layout={reduced ? false : "position"}
+                key={p.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{
+                  duration: reduced ? 0 : 0.24,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <ProductCard product={p} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       ) : (
         <div className="empty">

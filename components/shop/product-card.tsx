@@ -1,26 +1,42 @@
 "use client";
 import Image from "next/image";
+import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { ArrowUpRight, Plus } from "lucide-react";
 import type { ShopProduct } from "@/lib/catalog";
 import { priceFor, money } from "@/lib/pricing";
 export function ProductCard({ product: p }: { product: ShopProduct }) {
-  const variant = p.variants.find((v) => v.active) ?? p.variants[0];
+  const [selectedColor, setSelectedColor] = useState("");
+  const reduced = useReducedMotion();
+  const variant =
+    p.variants.find((v) => v.active && v.color === selectedColor) ??
+    p.variants.find((v) => v.active) ??
+    p.variants[0];
+  const href = `/product/${p.slug}${selectedColor ? `?color=${encodeURIComponent(selectedColor)}` : ""}`;
   const image = variant?.images[0]?.url;
   const secondary = variant?.images[1]?.url;
   const price = priceFor(p, variant?.priceOverride);
   const colors = [
-    ...new Map(p.variants.map((v) => [v.color, v.colorHex])).entries(),
+    ...new Map(
+      p.variants.filter((v) => v.active).map((v) => [v.color, v.colorHex]),
+    ).entries(),
   ];
   return (
     <article className="product-card">
       <Link
-        href={`/product/${p.slug}`}
+        href={href}
         className="product-image"
         aria-label={`${p.name} ansehen`}
       >
         {image ? (
-          <>
+          <motion.div
+            key={variant.color}
+            className="product-media-motion"
+            initial={{ opacity: 0.45 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: reduced ? 0 : 0.25 }}
+          >
             <Image
               src={image}
               alt={`${p.name} in ${variant.color}`}
@@ -36,7 +52,7 @@ export function ProductCard({ product: p }: { product: ShopProduct }) {
                 sizes="25vw"
               />
             )}
-          </>
+          </motion.div>
         ) : (
           <div className="image-placeholder">BMR®</div>
         )}
@@ -54,7 +70,7 @@ export function ProductCard({ product: p }: { product: ShopProduct }) {
       <div className="product-info">
         <div>
           <p>{p.category}</p>
-          <Link href={`/product/${p.slug}`}>
+          <Link href={href}>
             <h3>{p.name}</h3>
           </Link>
         </div>
@@ -69,7 +85,16 @@ export function ProductCard({ product: p }: { product: ShopProduct }) {
         </div>
         <div className="swatches">
           {colors.map(([name, hex]) => (
-            <span key={name} title={name} style={{ background: hex }} />
+            <button
+              key={name}
+              className="color-preview"
+              title={name}
+              aria-label={`${p.name} in ${name} anzeigen`}
+              aria-pressed={variant?.color === name}
+              onClick={() => setSelectedColor(name)}
+            >
+              <span style={{ background: hex }} />
+            </button>
           ))}
         </div>
       </div>

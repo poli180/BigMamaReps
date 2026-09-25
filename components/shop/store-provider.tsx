@@ -11,6 +11,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { X, Minus, Plus, ArrowRight, ShoppingBag } from "lucide-react";
 import { money } from "@/lib/pricing";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 export type CartItem = {
   variantId: string;
   name: string;
@@ -41,6 +42,7 @@ export function StoreProvider({
   shippingCost: number;
   freeShippingFrom: number;
 }) {
+  const reduced = useReducedMotion();
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
@@ -127,52 +129,95 @@ export function StoreProvider({
                     ? "Deine Bestellung ist versandkostenfrei."
                     : `Noch ${money(freeShippingFrom - total)} bis zum kostenlosen Versand.`}
                 </p>
+                <div
+                  className="shipping-progress"
+                  role="progressbar"
+                  aria-label="Fortschritt zum kostenlosen Versand"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(
+                    freeShippingFrom > 0
+                      ? Math.min(total / freeShippingFrom, 1) * 100
+                      : 100,
+                  )}
+                >
+                  <motion.span
+                    initial={false}
+                    animate={{
+                      scaleX:
+                        freeShippingFrom > 0
+                          ? Math.min(total / freeShippingFrom, 1)
+                          : 1,
+                    }}
+                    transition={{
+                      duration: reduced ? 0 : 0.4,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                  />
+                </div>
                 <div className="cart-items">
-                  {items.map((i) => (
-                    <article className="cart-item" key={i.variantId}>
-                      {i.image && (
-                        <Image
-                          src={i.image}
-                          alt={i.name}
-                          width={90}
-                          height={112}
-                        />
-                      )}
-                      <div>
-                        <h3>{i.name}</h3>
-                        <p>
-                          {i.color} / {i.size}
-                        </p>
-                        <div className="quantity">
+                  <AnimatePresence initial={false}>
+                    {items.map((i) => (
+                      <motion.article
+                        layout={reduced ? false : "position"}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: 15 }}
+                        transition={{ duration: reduced ? 0 : 0.2 }}
+                        className="cart-item"
+                        key={i.variantId}
+                      >
+                        {i.image && (
+                          <Image
+                            src={i.image}
+                            alt={i.name}
+                            width={90}
+                            height={112}
+                          />
+                        )}
+                        <div>
+                          <h3>{i.name}</h3>
+                          <p>
+                            {i.color} / {i.size}
+                          </p>
+                          <div className="quantity">
+                            <button
+                              aria-label={`${i.name} weniger`}
+                              onClick={() =>
+                                quantity(i.variantId, i.quantity - 1)
+                              }
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <motion.span
+                              key={i.quantity}
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: reduced ? 0 : 0.18 }}
+                            >
+                              {i.quantity}
+                            </motion.span>
+                            <button
+                              aria-label={`${i.name} mehr`}
+                              disabled={i.quantity >= i.max}
+                              onClick={() =>
+                                quantity(i.variantId, i.quantity + 1)
+                              }
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
                           <button
-                            aria-label={`${i.name} weniger`}
-                            onClick={() =>
-                              quantity(i.variantId, i.quantity - 1)
-                            }
+                            className="text-btn"
+                            onClick={() => quantity(i.variantId, 0)}
                           >
-                            <Minus size={14} />
-                          </button>
-                          <span>{i.quantity}</span>
-                          <button
-                            aria-label={`${i.name} mehr`}
-                            disabled={i.quantity >= i.max}
-                            onClick={() =>
-                              quantity(i.variantId, i.quantity + 1)
-                            }
-                          >
-                            <Plus size={14} />
+                            Entfernen
                           </button>
                         </div>
-                        <button
-                          className="text-btn"
-                          onClick={() => quantity(i.variantId, 0)}
-                        >
-                          Entfernen
-                        </button>
-                      </div>
-                      <strong>{money(i.price * i.quantity)}</strong>
-                    </article>
-                  ))}
+                        <strong>{money(i.price * i.quantity)}</strong>
+                      </motion.article>
+                    ))}
+                  </AnimatePresence>
                 </div>
                 <div className="cart-bottom">
                   <div className="between">

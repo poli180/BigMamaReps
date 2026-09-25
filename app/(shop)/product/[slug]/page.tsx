@@ -15,8 +15,10 @@ export async function generateMetadata({
 }
 export default async function Detail({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ color?: string }>;
 }) {
   const { slug } = await params;
   const all = await products();
@@ -29,7 +31,12 @@ export default async function Detail({
         <Link href="/">Startseite</Link> / <Link href="/shop">Shop</Link> /{" "}
         {p.name}
       </nav>
-      <ProductDetail product={p} shippingText={s.shippingText} />
+      <ProductDetail
+        key={p.id + ((await searchParams).color ?? "")}
+        product={p}
+        shippingText={s.shippingText}
+        initialColor={(await searchParams).color}
+      />
       <section className="related">
         <h2>Passt zu deinem Style.</h2>
         <div className="product-grid">

@@ -29,7 +29,10 @@ export class ApiError extends Error {
 export function apiError(e: unknown) {
   if (e instanceof ApiError)
     return Response.json({ error: e.message }, { status: e.status });
-  console.error(e instanceof Error ? e.name : "RequestError");
+  console.error({
+    name: e instanceof Error ? e.name : "RequestError",
+    code: typeof e === "object" && e && "code" in e ? e.code : undefined,
+  });
   return Response.json(
     {
       error:

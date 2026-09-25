@@ -1,0 +1,136 @@
+/* Quiet interaction feedback, inspired by gallery and cart motion patterns. */
+.catalog-categories button {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+.catalog-categories button.selected {
+  background: transparent;
+  color: white;
+  border-color: transparent;
+}
+.category-label {
+  position: relative;
+  z-index: 1;
+}
+.category-indicator {
+  position: absolute;
+  inset: -1px;
+  background: var(--primary);
+  border-radius: 30px;
+  z-index: 0;
+  pointer-events: none;
+}
+.catalog-categories button:hover {
+  transform: none;
+}
+.result-count > span {
+  display: inline-block;
+  min-width: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.filter-reveal {
+  overflow: hidden;
+}
+.catalog-card-motion {
+  min-width: 0;
+}
+.product-media-motion,
+.detail-media-motion {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.color-preview {
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+}
+.color-preview > span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #0001;
+}
+.color-preview[aria-pressed="true"] {
+  border-color: var(--primary);
+}
+.color-preview:hover {
+  transform: scale(1.1);
+}
+.swatches {
+  gap: 3px;
+}
+.add-button {
+  position: relative;
+  overflow: hidden;
+}
+.add-button-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-height: 26px;
+  border-right: 1px solid #ffffff38;
+  margin-left: -12px;
+  padding-right: 13px;
+}
+.add-button-label {
+  display: inline-block;
+}
+.shipping-progress {
+  height: 4px;
+  margin: -8px 0 22px;
+  background: #e8ece3;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.shipping-progress > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #789c61;
+  transform-origin: left;
+}
+.cart-items {
+  overflow-x: hidden;
+}
+.cart-item .quantity span {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+}
+.detail-copy details[open] p {
+  animation: detail-open 0.22s ease-out both;
+}
+@keyframes detail-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.category-card:hover .circle-arrow {
+  transform: translate(2px, -2px);
+}
+@media (hover: hover) {
+  .product-card:hover {
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-card-motion,
+  .product-media-motion,
+  .detail-media-motion,
+  .result-count > span,
+  .add-button-label {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

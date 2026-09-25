@@ -6,15 +6,13 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import { ArrowUpRight, ArrowDown, Pause, Play } from "lucide-react";
+import { ArrowUpRight, ArrowDown } from "lucide-react";
 import Link from "next/link";
 import type { Settings } from "@/lib/settings";
 export function Hero({ settings: s }: { settings: Settings }) {
   const root = useRef<HTMLElement>(null);
   const video = useRef<HTMLVideoElement>(null);
-  const pausedByUser = useRef(false);
   const reduced = useReducedMotion();
-  const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
   const { scrollYProgress } = useScroll({
     target: root,
@@ -24,13 +22,9 @@ export function Hero({ settings: s }: { settings: Settings }) {
   useEffect(() => {
     const el = video.current;
     if (!el) return;
-    setPlaying(!el.paused);
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !pausedByUser.current)
-          el.play()
-            .then(() => setPlaying(true))
-            .catch(() => setPlaying(false));
+        if (entry.isIntersecting) el.play().catch(() => {});
         else el.pause();
       },
       { threshold: 0.15 },
@@ -57,8 +51,6 @@ export function Hero({ settings: s }: { settings: Settings }) {
             playsInline
             preload="metadata"
             poster={s.heroPoster || undefined}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
             onError={() => setFailed(true)}
           />
         ) : (s.heroType === "video" ? s.heroPoster : s.heroUrl) ? (
@@ -128,24 +120,6 @@ export function Hero({ settings: s }: { settings: Settings }) {
           <ArrowDown size={16} /> SCROLL TO EXPLORE
         </a>
         <span>WENIGER REGELN. MEHR DU.</span>
-        {s.heroType === "video" && !failed && (
-          <button
-            className="video-control"
-            aria-label={
-              playing ? "Hero-Video pausieren" : "Hero-Video abspielen"
-            }
-            onClick={() => {
-              const el = video.current;
-              if (!el) return;
-              pausedByUser.current = !el.paused;
-              if (el.paused) el.play().catch(() => setPlaying(false));
-              else el.pause();
-            }}
-          >
-            {playing ? <Pause size={15} /> : <Play size={15} />}
-            <span>{playing ? "Pause" : "Abspielen"}</span>
-          </button>
-        )}
       </div>
     </section>
   );

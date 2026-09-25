@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ShoppingBag, Truck, RotateCcw, X, ZoomIn, Check } from "lucide-react";
@@ -9,16 +10,23 @@ import { useStore } from "./store-provider";
 export function ProductDetail({
   product: p,
   shippingText,
+  initialColor,
 }: {
   product: ShopProduct;
   shippingText: string;
+  initialColor?: string;
 }) {
   const colors = [
     ...new Map(
       p.variants.filter((v) => v.active).map((v) => [v.color, v]),
     ).values(),
   ];
-  const [color, setColor] = useState(colors[0]?.color ?? "");
+  const reduced = useReducedMotion();
+  const [color, setColor] = useState(
+    colors.find((v) => v.color === initialColor)?.color ??
+      colors[0]?.color ??
+      "",
+  );
   const [size, setSize] = useState("");
   const [index, setIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
@@ -54,13 +62,21 @@ export function ProductDetail({
           aria-label="Produktbild vergrößern"
         >
           {images[index] ? (
-            <Image
-              src={images[index].url}
-              alt={`${p.name} ${color}`}
-              fill
-              priority
-              sizes="(max-width:800px) 100vw, 55vw"
-            />
+            <motion.span
+              key={images[index].url}
+              className="detail-media-motion"
+              initial={{ opacity: 0.45 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: reduced ? 0 : 0.24 }}
+            >
+              <Image
+                src={images[index].url}
+                alt={`${p.name} ${color}`}
+                fill
+                priority
+                sizes="(max-width:800px) 100vw, 55vw"
+              />
+            </motion.span>
           ) : (
             <span>Bild folgt</span>
           )}
@@ -159,8 +175,18 @@ export function ProductDetail({
           disabled={!variant || available < 1}
           onClick={add}
         >
-          {added ? <Check size={19} /> : <ShoppingBag size={19} />}{" "}
-          {added ? "Im Warenkorb" : "In den Warenkorb"}
+          <span className="add-button-icon">
+            {added ? <Check size={19} /> : <ShoppingBag size={19} />}
+          </span>
+          <motion.span
+            className="add-button-label"
+            key={String(added)}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduced ? 0 : 0.2 }}
+          >
+            {added ? "Im Warenkorb" : "In den Warenkorb"}
+          </motion.span>
         </button>
         <div className="detail-benefits">
           <p>
