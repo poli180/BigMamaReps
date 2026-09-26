@@ -62,6 +62,7 @@ Admin unter `/admin/login`. Passwort: mindestens 14 Zeichen und höchstens 72 UT
 | Variable                                               | Zweck                                                                                                  |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | `DATABASE_URL`                                         | PostgreSQL-Verbindung; bei Serverless Betrieb Pooling passend zum Anbieter konfigurieren               |
+| `SHOP_DATABASE_URL` / `SHOP_DATABASE_URL_UNPOOLED`       | Neon-Vercel-Integration mit Prefix `SHOP`: gepoolte Laufzeitverbindung / direkte Verbindung für Migrationen; hat Vorrang vor `DATABASE_URL` |
 | `APP_URL`                                              | Öffentliche HTTPS-Origin ohne abschließenden Slash; lokal exakt die verwendete Origin                  |
 | `NEXTAUTH_SECRET`                                      | Eigener JWT-Secret (Name zur Vorgabenkompatibilität; NextAuth selbst ist nicht installiert)            |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`                   | Ein zugelassener Admin, bcrypt-Hash                                                                    |

@@ -4,11 +4,12 @@ import { z } from "zod";
 import { apiError, checkOrigin, ApiError } from "@/lib/auth";
 import { signSession, cookieName } from "@/lib/session";
 import { limit } from "@/lib/limits";
+import { databaseUrl } from "@/lib/db";
 export async function POST(req: Request) {
   try {
     checkOrigin(req);
     if (
-      !process.env.DATABASE_URL ||
+      !databaseUrl() ||
       !process.env.ADMIN_EMAIL ||
       !process.env.ADMIN_PASSWORD_HASH ||
       !process.env.NEXTAUTH_SECRET

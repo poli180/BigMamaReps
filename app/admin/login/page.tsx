@@ -1,4 +1,5 @@
 import { Login } from "@/components/admin/login";
+import { databaseUrl } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Admin-Anmeldung",
@@ -9,7 +10,7 @@ export default function Page() {
     <Login
       configured={
         !!(
-          process.env.DATABASE_URL &&
+          databaseUrl() &&
           process.env.ADMIN_EMAIL &&
           process.env.ADMIN_PASSWORD_HASH &&
           process.env.NEXTAUTH_SECRET
