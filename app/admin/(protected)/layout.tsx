@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { AdminShell } from "@/components/admin/shell";
+import { PaymentSync } from "@/components/admin/payment-sync";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Shop-Verwaltung",
@@ -21,6 +22,7 @@ export default async function AdminLayout({
         </p>
       )}
       {children}
+      <PaymentSync />
     </AdminShell>
   );
 }

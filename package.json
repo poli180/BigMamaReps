@@ -20,6 +20,7 @@
     "@aws-sdk/s3-request-presigner": "^3.900.0",
     "@prisma/client": "6.19.2",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@vercel/blob": "^2.8.0",
     "bcryptjs": "^3.0.2",
     "framer-motion": "^12.23.0",
     "jose": "^6.1.0",

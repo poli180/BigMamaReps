@@ -54,7 +54,13 @@ export async function POST(req: Request) {
       return product;
     });
     await catalogChanged();
-    return Response.json({ id: result.id });
+    return Response.json({
+      id: result.id,
+      variants: await db.variant.findMany({
+        where: { productId: result.id },
+        select: { id: true, sku: true },
+      }),
+    });
   } catch (e) {
     if (e instanceof z.ZodError)
       return Response.json(

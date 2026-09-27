@@ -18,7 +18,7 @@ export const defaults = {
   shippingCost: 4.9,
   freeShippingFrom: 100,
   shippingCountries: ["DE", "AT", "CH"],
-  shippingText: "Lieferzeit: 3–5 Werktage",
+  shippingText: "Lieferzeit: 15–20 Tage",
   instagram: "",
   tiktok: "",
   footerText: "Wear it your way.",

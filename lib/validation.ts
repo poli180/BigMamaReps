@@ -49,10 +49,10 @@ export const productInput = z
       .array(
         z.object({
           id: z.string().optional(),
-          color: z.string().min(1).max(60),
+          color: z.string().trim().min(1).max(60),
           colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-          size: z.string().min(1).max(20),
-          sku: z.string().min(1).max(100),
+          size: z.string().trim().min(1).max(20),
+          sku: z.string().trim().min(1).max(100),
           stock: z.number().int().min(0).max(1000000),
           priceOverride: amount.nullable(),
           active: z.boolean(),
@@ -76,8 +76,8 @@ export const productInput = z
         message: "Sale-Ende muss nach dem Start liegen.",
       });
     if (
-      new Set(p.variants.map((v) => v.color + "|" + v.size)).size !==
-      p.variants.length
+      new Set(p.variants.map((v) => (v.color + "|" + v.size).toLowerCase()))
+        .size !== p.variants.length
     )
       ctx.addIssue({
         code: "custom",

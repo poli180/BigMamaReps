@@ -6,6 +6,8 @@ import { adminApi, apiError, ApiError } from "@/lib/auth";
 export async function POST(req: Request) {
   try {
     await adminApi(req);
+    if (process.env.BLOB_READ_WRITE_TOKEN)
+      return Response.json({ provider: "blob" });
     if (
       !process.env.STORAGE_BUCKET ||
       !process.env.STORAGE_BUCKET_URL ||

@@ -1,5 +1,6 @@
 "use client";
 import { saveRequest } from "./save-request";
+import { upload as uploadBlob } from "@vercel/blob/client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -18,6 +19,11 @@ import {
 import type { ShopProduct, ShopVariant } from "@/lib/catalog";
 import type { Settings } from "@/lib/settings";
 import { priceFor, money } from "@/lib/pricing";
+import {
+  isShoeCategory,
+  suggestedSizes,
+  parseSizes,
+} from "@/lib/variant-options";
 type Message = { error?: string; ok?: string };
 async function save(url: string, data: unknown) {
   const r = await saveRequest(url, {
@@ -151,10 +157,34 @@ export function MediaUpload({
     const urls: string[] = [];
     try {
       for (const file of Array.from(files)) {
+        const allowed = video
+          ? ["video/mp4", "video/webm"]
+          : ["image/jpeg", "image/png", "image/webp"];
+        if (!allowed.includes(file.type))
+          throw new Error("Bitte ein unterstütztes Dateiformat wählen.");
+        if (file.size > (video ? 100 : 10) * 1024 * 1024)
+          throw new Error(
+            `Die Datei darf maximal ${video ? 100 : 10} MB groß sein.`,
+          );
         const result = await save("/api/admin/upload", {
           type: file.type,
           size: file.size,
         });
+        if (result.provider === "blob") {
+          const blob = await uploadBlob(
+            `media/${crypto.randomUUID()}.${file.type.split("/")[1]}`,
+            file,
+            {
+              access: "public",
+              handleUploadUrl: "/api/admin/upload/blob",
+              multipart: file.size > 5 * 1024 * 1024,
+              onUploadProgress: ({ percentage }) =>
+                setProgress(Math.round(percentage)),
+            },
+          );
+          urls.push(blob.url);
+          continue;
+        }
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", result.uploadUrl);
@@ -251,7 +281,7 @@ export function ProductEditor({
   const [busy, setBusy] = useState(false);
   const [color, setColor] = useState("Black");
   const [hex, setHex] = useState("#222222");
-  const [sizes, setSizes] = useState("S, M, L, XL");
+  const [sizes, setSizes] = useState("");
   const router = useRouter();
   function field<K extends keyof ShopProduct>(key: K, value: ShopProduct[K]) {
     setP((prev) => ({ ...prev, [key]: value }));
@@ -265,23 +295,32 @@ export function ProductEditor({
     }));
   }
   function addMatrix() {
-    if (!color.trim()) return;
+    if (!color.trim() || !parseSizes(sizes).length) {
+      setMessage({
+        error: "Bitte Farbe und mindestens eine Größe eingeben oder auswählen.",
+      });
+      return;
+    }
+    if (p.variants.length + parseSizes(sizes).length > 150) {
+      setMessage({ error: "Pro Produkt sind maximal 150 Varianten möglich." });
+      return;
+    }
     setP((prev) => {
-      const additions = sizes
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .filter(
-          (size) =>
-            !prev.variants.some((v) => v.color === color && v.size === size),
-        );
+      const additions = parseSizes(sizes).filter(
+        (size) =>
+          !prev.variants.some(
+            (v) =>
+              v.color.toLowerCase() === color.trim().toLowerCase() &&
+              v.size.toLowerCase() === size.toLowerCase(),
+          ),
+      );
       return {
         ...prev,
         variants: [
           ...prev.variants,
           ...additions.map((size) => ({
             id: "",
-            color,
+            color: color.trim(),
             colorHex: hex,
             size,
             sku: `${prev.slug || "BMR"}-${color}-${size}-${crypto.randomUUID().slice(0, 4)}`,
@@ -289,7 +328,10 @@ export function ProductEditor({
             reserved: 0,
             priceOverride: null,
             active: true,
-            images: [],
+            images:
+              prev.variants.find(
+                (v) => v.color.toLowerCase() === color.trim().toLowerCase(),
+              )?.images ?? [],
           })),
         ],
       };
@@ -305,6 +347,17 @@ export function ProductEditor({
         id: p.id || undefined,
         variants: p.variants.map((v) => ({ ...v, id: v.id || undefined })),
       });
+      setP((prev) => ({
+        ...prev,
+        id: result.id,
+        variants: prev.variants.map((v) => ({
+          ...v,
+          id:
+            result.variants.find(
+              (saved: { id: string; sku: string }) => saved.sku === v.sku,
+            )?.id ?? v.id,
+        })),
+      }));
       setMessage({ ok: "Produkt gespeichert." });
       if (!p.id) router.replace(`/admin/products/${result.id}`);
       router.refresh();
@@ -374,7 +427,10 @@ export function ProductEditor({
                 <select
                   required
                   value={p.category}
-                  onChange={(e) => field("category", e.target.value)}
+                  onChange={(e) => {
+                    field("category", e.target.value);
+                    setSizes("");
+                  }}
                 >
                   <option value="">Kategorie wählen</option>
                   {categoryNames.map((name) => (
@@ -411,8 +467,9 @@ export function ProductEditor({
           <section className="panel">
             <h2>Varianten & Bestand</h2>
             <p className="muted">
-              Farbe hinzufügen und Größen als Matrix erzeugen. Bestand
-              bezeichnet die physisch vorhandene Menge.
+              Neue Farben mit passenden Größen ergänzen. Bestehende Farben,
+              Farbtöne und Größen kannst du direkt in der Tabelle ändern. Neue
+              Varianten starten mit Bestand 0.
             </p>
             <div className="matrix-form">
               <label>
@@ -431,17 +488,51 @@ export function ProductEditor({
                 />
               </label>
               <label>
-                Größen (mit Komma)
+                {isShoeCategory(p.category)
+                  ? "EU-Schuhgrößen (mit Komma)"
+                  : "Größen (mit Komma)"}
                 <input
                   value={sizes}
+                  placeholder={
+                    isShoeCategory(p.category)
+                      ? "z. B. 40, 41, 42, 42.5"
+                      : "z. B. S, M, L"
+                  }
                   onChange={(e) => setSizes(e.target.value)}
                 />
               </label>
               <button type="button" className="btn outline" onClick={addMatrix}>
                 <Plus size={16} />
-                Erzeugen
+                Varianten hinzufügen
               </button>
             </div>
+            <div className="size-presets" aria-label="Größenvorschläge">
+              {suggestedSizes(p.category).map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  className="btn outline"
+                  aria-pressed={parseSizes(sizes).includes(size)}
+                  onClick={() =>
+                    setSizes((prev) => {
+                      const list = parseSizes(prev);
+                      return (
+                        list.includes(size)
+                          ? list.filter((s) => s !== size)
+                          : [...list, size]
+                      ).join(", ");
+                    })
+                  }
+                >
+                  {isShoeCategory(p.category) ? `EU ${size}` : size}
+                </button>
+              ))}
+            </div>
+            <datalist id="variant-sizes">
+              {suggestedSizes(p.category).map((size) => (
+                <option key={size} value={size} />
+              ))}
+            </datalist>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -468,7 +559,33 @@ export function ProductEditor({
                         />
                       </td>
                       <td>
-                        {v.color} / {v.size}
+                        <input
+                          aria-label={`Farbe Variante ${i + 1}`}
+                          value={v.color}
+                          onChange={(e) =>
+                            updateVariant(i, { color: e.target.value })
+                          }
+                          required
+                          maxLength={60}
+                        />
+                        <input
+                          aria-label={`Farbton Variante ${i + 1}`}
+                          type="color"
+                          value={v.colorHex}
+                          onChange={(e) =>
+                            updateVariant(i, { colorHex: e.target.value })
+                          }
+                        />
+                        <input
+                          aria-label={`${isShoeCategory(p.category) ? "EU-Schuhgröße" : "Größe"} Variante ${i + 1}`}
+                          value={v.size}
+                          list="variant-sizes"
+                          onChange={(e) =>
+                            updateVariant(i, { size: e.target.value })
+                          }
+                          required
+                          maxLength={20}
+                        />
                       </td>
                       <td>
                         <input

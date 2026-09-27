@@ -108,8 +108,7 @@ html {
 }
 .hero-visual {
   position: absolute;
-  inset: -8% 0;
-  will-change: transform;
+  inset: 0;
 }
 .hero-editorial .hero-media {
   object-position: 65% center;
@@ -770,25 +769,6 @@ footer {
 .brand-ticker > div {
   animation: marquee-right 38s linear infinite !important;
 }
-.brand-ticker.is-paused > div {
-  animation-play-state: paused !important;
-}
-.ticker-control {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--accent);
-  box-shadow: 0 0 20px 12px var(--accent);
-}
-.ticker-control:active {
-  transform: translateY(-50%) scale(0.96);
-}
 .hero-film-label {
   top: auto;
   bottom: 125px;
@@ -797,4 +777,22 @@ footer {
   .brand-ticker > div {
     animation-duration: 65s !important;
   }
+}
+.size-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 20px;
+}
+.size-presets .btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.size-presets .btn[aria-pressed="true"] {
+  background: #182b29;
+  color: white;
+}
+.payment-sync {
+  margin-top: 24px;
 }

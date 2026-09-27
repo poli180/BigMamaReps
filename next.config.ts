@@ -4,6 +4,7 @@ const config: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "photo.yupoo.com" },
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
       ...(process.env.STORAGE_BUCKET_URL
         ? [

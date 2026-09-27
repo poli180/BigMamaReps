@@ -1,24 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, ArrowDown } from "lucide-react";
 import Link from "next/link";
 import type { Settings } from "@/lib/settings";
 export function Hero({ settings: s }: { settings: Settings }) {
-  const root = useRef<HTMLElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
-  const { scrollYProgress } = useScroll({
-    target: root,
-    offset: ["start start", "end start"],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 100]);
+  useEffect(() => setFailed(false), [s.heroUrl, s.heroType]);
   useEffect(() => {
     const el = video.current;
     if (!el) return;
@@ -31,14 +21,10 @@ export function Hero({ settings: s }: { settings: Settings }) {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [s.heroUrl, s.heroType]);
+  }, [s.heroUrl, s.heroType, failed]);
   return (
-    <section
-      ref={root}
-      className="hero hero-editorial"
-      aria-label="Neue Kollektion"
-    >
-      <motion.div className="hero-visual" style={{ y: reduced ? 0 : y }}>
+    <section className="hero hero-editorial" aria-label="Neue Kollektion">
+      <div className="hero-visual">
         {s.heroType === "video" && !failed ? (
           <video
             key={s.heroUrl}
@@ -62,7 +48,7 @@ export function Hero({ settings: s }: { settings: Settings }) {
         ) : (
           <div className="hero-media hero-empty" />
         )}
-      </motion.div>
+      </div>
       <div className="hero-shade" />
       <div className="hero-topline">
         <span>INDEPENDENT STYLE. EVERY DAY.</span>
