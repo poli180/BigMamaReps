@@ -3,15 +3,17 @@ import { db } from "@/lib/db";
 import { fulfillOrder, releaseOrder, syncRefund } from "@/lib/orders";
 import { deliverNotifications } from "@/lib/notifications";
 import type Stripe from "stripe";
+import { adminEnv } from "@/lib/admin-config";
 export async function POST(req: Request) {
-  if (!process.env.STRIPE_WEBHOOK_SECRET)
+  const webhookSecret = adminEnv("STRIPE_WEBHOOK_SECRET");
+  if (!webhookSecret)
     return new Response("Webhook not configured", { status: 503 });
   let event: Stripe.Event;
   try {
     event = stripe().webhooks.constructEvent(
       await req.text(),
       req.headers.get("stripe-signature") ?? "",
-      process.env.STRIPE_WEBHOOK_SECRET,
+      webhookSecret,
     );
   } catch {
     return new Response("Invalid signature", { status: 400 });

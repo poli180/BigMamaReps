@@ -1,9 +1,10 @@
 import Stripe from "stripe";
+import { adminEnv } from "./admin-config";
 let client: Stripe | undefined;
 export function stripe() {
-  if (!process.env.STRIPE_SECRET_KEY)
-    throw new Error("Stripe ist nicht konfiguriert");
-  return (client ??= new Stripe(process.env.STRIPE_SECRET_KEY, {
+  const key = adminEnv("STRIPE_SECRET_KEY");
+  if (!key) throw new Error("Stripe ist nicht konfiguriert");
+  return (client ??= new Stripe(key, {
     maxNetworkRetries: 2,
   }));
 }

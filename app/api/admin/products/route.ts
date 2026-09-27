@@ -18,11 +18,21 @@ export async function POST(req: Request) {
         where: { productId: product.id },
       });
       const ids = old.map((v) => v.id);
+      const kept = new Set<string>();
       for (const v of variants) {
         if (v.id && !ids.includes(v.id))
           throw new ApiError("Ungültige Variante");
-        const { images, id: vid, ...fields } = v;
+        const { images, id: inputId, ...fields } = v;
+        const vid =
+          inputId ??
+          old.find(
+            (existing) =>
+              existing.color === fields.color &&
+              existing.size === fields.size &&
+              !variants.some((incoming) => incoming.id === existing.id),
+          )?.id;
         if (vid) {
+          kept.add(vid);
           await tx.$executeRaw`SELECT id FROM "Variant" WHERE id=${vid} FOR UPDATE`;
           const current = await tx.variant.findUniqueOrThrow({
             where: { id: vid },
@@ -47,7 +57,7 @@ export async function POST(req: Request) {
       await tx.variant.updateMany({
         where: {
           productId: product.id,
-          id: { in: ids.filter((id) => !variants.some((v) => v.id === id)) },
+          id: { in: ids.filter((id) => !kept.has(id)) },
         },
         data: { active: false },
       });

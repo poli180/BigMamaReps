@@ -354,7 +354,8 @@ export function ProductEditor({
           ...v,
           id:
             result.variants.find(
-              (saved: { id: string; sku: string }) => saved.sku === v.sku,
+              (saved: { id: string; sku: string }) =>
+                saved.sku === v.sku.trim(),
             )?.id ?? v.id,
         })),
       }));
