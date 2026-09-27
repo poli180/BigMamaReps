@@ -1,7 +1,13 @@
 "use client";
 import { useState } from "react";
 import { LockKeyhole, ArrowRight } from "lucide-react";
-export function Login({ configured }: { configured: boolean }) {
+export function Login({
+  configured,
+  configIssues = [],
+}: {
+  configured: boolean;
+  configIssues?: string[];
+}) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -53,9 +59,9 @@ export function Login({ configured }: { configured: boolean }) {
         </label>
         {!configured && (
           <p className="notice">
-            Admin-Zugang noch nicht eingerichtet. Datenbank, ADMIN_EMAIL,
-            ADMIN_PASSWORD_HASH und NEXTAUTH_SECRET in der Umgebung
-            konfigurieren.
+            Admin-Konfiguration fehlt oder ist ungültig:{" "}
+            {configIssues.join(", ")}. Bitte die Werte in Vercel prüfen und
+            anschließend neu deployen.
           </p>
         )}
         {error && (

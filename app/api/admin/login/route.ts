@@ -5,19 +5,16 @@ import { apiError, checkOrigin, ApiError } from "@/lib/auth";
 import { signSession, cookieName } from "@/lib/session";
 import { limit } from "@/lib/limits";
 import { databaseUrl } from "@/lib/db";
+import { adminConfig } from "@/lib/admin-config";
 export async function POST(req: Request) {
   try {
     checkOrigin(req);
-    if (
-      !databaseUrl() ||
-      !process.env.ADMIN_EMAIL ||
-      !process.env.ADMIN_PASSWORD_HASH ||
-      !process.env.NEXTAUTH_SECRET
-    )
+    const config = adminConfig();
+    if (!databaseUrl() || config.issues.length)
       throw new ApiError("Admin-Zugang ist noch nicht konfiguriert.", 503);
     const input = z
       .object({
-        email: z.email().max(254),
+        email: z.string().trim().pipe(z.email().max(254)),
         password: z
           .string()
           .min(1)
@@ -27,14 +24,8 @@ export async function POST(req: Request) {
       .parse(await req.json());
     await limit("admin-login", 30);
     await limit("admin:" + input.email.toLowerCase(), 8);
-    const valid = await compare(
-      input.password,
-      process.env.ADMIN_PASSWORD_HASH,
-    );
-    if (
-      !valid ||
-      input.email.toLowerCase() !== process.env.ADMIN_EMAIL.toLowerCase()
-    )
+    const valid = await compare(input.password, config.passwordHash);
+    if (!valid || input.email.toLowerCase() !== config.email)
       throw new ApiError("E-Mail oder Passwort ist falsch.", 401);
     (await cookies()).set(cookieName, await signSession(), {
       httpOnly: true,

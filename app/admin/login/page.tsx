@@ -1,21 +1,13 @@
 import { Login } from "@/components/admin/login";
 import { databaseUrl } from "@/lib/db";
+import { adminConfig } from "@/lib/admin-config";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Admin-Anmeldung",
   robots: { index: false, follow: false },
 };
 export default function Page() {
-  return (
-    <Login
-      configured={
-        !!(
-          databaseUrl() &&
-          process.env.ADMIN_EMAIL &&
-          process.env.ADMIN_PASSWORD_HASH &&
-          process.env.NEXTAUTH_SECRET
-        )
-      }
-    />
-  );
+  const issues = [...adminConfig().issues];
+  if (!databaseUrl()) issues.push("DATABASE_URL");
+  return <Login configured={!issues.length} configIssues={issues} />;
 }
