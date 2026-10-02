@@ -1,5 +1,6 @@
 "use client";
 import { saveRequest } from "./save-request";
+import { VariantCards } from "./variant-cards";
 import { upload as uploadBlob } from "@vercel/blob/client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -151,12 +152,12 @@ export function MediaUpload({
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
   async function upload(files: FileList | null) {
-    if (!files?.length) return;
+    if (!files?.length || progress !== null) return;
     setError("");
     setProgress(0);
     const urls: string[] = [];
     try {
-      for (const file of Array.from(files)) {
+      for (const file of Array.from(files).slice(0, multiple ? undefined : 1)) {
         const allowed = video
           ? ["video/mp4", "video/webm"]
           : ["image/jpeg", "image/png", "image/webp"];
@@ -223,7 +224,9 @@ export function MediaUpload({
     >
       <Upload size={20} />
       <label>
-        Dateien auswählen oder hier ablegen
+        {video
+          ? "Video auswählen oder hier ablegen"
+          : "Bilder auswählen oder hier ablegen"}
         <input
           type="file"
           accept={
@@ -231,7 +234,10 @@ export function MediaUpload({
           }
           multiple={multiple}
           disabled={progress !== null}
-          onChange={(e) => void upload(e.target.files)}
+          onChange={(e) => {
+            void upload(e.target.files);
+            e.target.value = "";
+          }}
         />
       </label>
       <small>
@@ -534,115 +540,11 @@ export function ProductEditor({
                 <option key={size} value={size} />
               ))}
             </datalist>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Aktiv</th>
-                    <th>Farbe / Größe</th>
-                    <th>SKU</th>
-                    <th>Bestand</th>
-                    <th>Reserviert</th>
-                    <th>Preis optional</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {p.variants.map((v, i) => (
-                    <tr key={v.id || `new-${i}`}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={v.active}
-                          onChange={(e) =>
-                            updateVariant(i, { active: e.target.checked })
-                          }
-                        />
-                      </td>
-                      <td>
-                        <input
-                          aria-label={`Farbe Variante ${i + 1}`}
-                          value={v.color}
-                          onChange={(e) =>
-                            updateVariant(i, { color: e.target.value })
-                          }
-                          required
-                          maxLength={60}
-                        />
-                        <input
-                          aria-label={`Farbton Variante ${i + 1}`}
-                          type="color"
-                          value={v.colorHex}
-                          onChange={(e) =>
-                            updateVariant(i, { colorHex: e.target.value })
-                          }
-                        />
-                        <input
-                          aria-label={`${isShoeCategory(p.category) ? "EU-Schuhgröße" : "Größe"} Variante ${i + 1}`}
-                          value={v.size}
-                          list="variant-sizes"
-                          onChange={(e) =>
-                            updateVariant(i, { size: e.target.value })
-                          }
-                          required
-                          maxLength={20}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          aria-label={`SKU ${v.color} ${v.size}`}
-                          value={v.sku}
-                          onChange={(e) =>
-                            updateVariant(i, { sku: e.target.value })
-                          }
-                        />
-                      </td>
-                      <td>
-                        <input
-                          aria-label={`Bestand ${v.color} ${v.size}`}
-                          type="number"
-                          min={v.reserved}
-                          value={v.stock}
-                          onChange={(e) =>
-                            updateVariant(i, { stock: +e.target.value })
-                          }
-                        />
-                      </td>
-                      <td>{v.reserved}</td>
-                      <td>
-                        <input
-                          aria-label={`Preis ${v.color} ${v.size}`}
-                          type="number"
-                          min="0"
-                          step=".01"
-                          value={v.priceOverride ?? ""}
-                          onChange={(e) =>
-                            updateVariant(i, {
-                              priceOverride:
-                                e.target.value === "" ? null : +e.target.value,
-                            })
-                          }
-                        />
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          aria-label="Variante entfernen"
-                          onClick={() =>
-                            field(
-                              "variants",
-                              p.variants.filter((_, n) => n !== i),
-                            )
-                          }
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <VariantCards
+              variants={p.variants}
+              category={p.category}
+              onChange={(variants) => field("variants", variants)}
+            />
           </section>
           {colorGroups.map((group) => {
             const images = p.variants.find((v) => v.color === group)!.images;
@@ -924,6 +826,10 @@ export function SettingsEditor({
         <>
           <section className="panel">
             <h2>Hero-Bereich</h2>
+            <p className="muted">
+              1. Video oder Bild auswählen. 2. Vorschau prüfen. 3. Oben
+              speichern – danach wird der neue Hintergrund im Shop angezeigt.
+            </p>
             <label>
               Hintergrund
               <select
