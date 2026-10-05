@@ -874,3 +874,49 @@ footer {
     padding: 14px;
   }
 }
+
+.add-colors h3 {
+  margin: 20px 0 10px;
+  font-size: 15px;
+}
+.color-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.color-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #d2d9d3;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.color-choice span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #0002;
+}
+.color-choice[aria-pressed="true"] {
+  border-color: #1c4734;
+  background: #e8f1ea;
+  box-shadow: 0 0 0 1px #1c4734;
+}
+.custom-color {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.custom-color label:first-child {
+  flex: 1;
+  min-width: 150px;
+}
+.custom-color input[type="color"] {
+  width: 64px;
+  min-height: 42px;
+}

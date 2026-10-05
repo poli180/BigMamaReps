@@ -1,6 +1,7 @@
 "use client";
 import { saveRequest } from "./save-request";
 import { VariantCards } from "./variant-cards";
+import { AddColors } from "./add-colors";
 import { upload as uploadBlob } from "@vercel/blob/client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -17,14 +18,9 @@ import {
   Italic,
   List,
 } from "lucide-react";
-import type { ShopProduct, ShopVariant } from "@/lib/catalog";
+import type { ShopProduct } from "@/lib/catalog";
 import type { Settings } from "@/lib/settings";
 import { priceFor, money } from "@/lib/pricing";
-import {
-  isShoeCategory,
-  suggestedSizes,
-  parseSizes,
-} from "@/lib/variant-options";
 type Message = { error?: string; ok?: string };
 async function save(url: string, data: unknown) {
   const r = await saveRequest(url, {
@@ -285,63 +281,9 @@ export function ProductEditor({
   );
   const [message, setMessage] = useState<Message>({});
   const [busy, setBusy] = useState(false);
-  const [color, setColor] = useState("Black");
-  const [hex, setHex] = useState("#222222");
-  const [sizes, setSizes] = useState("");
   const router = useRouter();
   function field<K extends keyof ShopProduct>(key: K, value: ShopProduct[K]) {
     setP((prev) => ({ ...prev, [key]: value }));
-  }
-  function updateVariant(index: number, patch: Partial<ShopVariant>) {
-    setP((prev) => ({
-      ...prev,
-      variants: prev.variants.map((v, i) =>
-        i === index ? { ...v, ...patch } : v,
-      ),
-    }));
-  }
-  function addMatrix() {
-    if (!color.trim() || !parseSizes(sizes).length) {
-      setMessage({
-        error: "Bitte Farbe und mindestens eine Größe eingeben oder auswählen.",
-      });
-      return;
-    }
-    if (p.variants.length + parseSizes(sizes).length > 150) {
-      setMessage({ error: "Pro Produkt sind maximal 150 Varianten möglich." });
-      return;
-    }
-    setP((prev) => {
-      const additions = parseSizes(sizes).filter(
-        (size) =>
-          !prev.variants.some(
-            (v) =>
-              v.color.toLowerCase() === color.trim().toLowerCase() &&
-              v.size.toLowerCase() === size.toLowerCase(),
-          ),
-      );
-      return {
-        ...prev,
-        variants: [
-          ...prev.variants,
-          ...additions.map((size) => ({
-            id: "",
-            color: color.trim(),
-            colorHex: hex,
-            size,
-            sku: `${prev.slug || "BMR"}-${color}-${size}-${crypto.randomUUID().slice(0, 4)}`,
-            stock: 0,
-            reserved: 0,
-            priceOverride: null,
-            active: true,
-            images:
-              prev.variants.find(
-                (v) => v.color.toLowerCase() === color.trim().toLowerCase(),
-              )?.images ?? [],
-          })),
-        ],
-      };
-    });
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -436,7 +378,6 @@ export function ProductEditor({
                   value={p.category}
                   onChange={(e) => {
                     field("category", e.target.value);
-                    setSizes("");
                   }}
                 >
                   <option value="">Kategorie wählen</option>
@@ -473,73 +414,17 @@ export function ProductEditor({
           </section>
           <section className="panel">
             <h2>Varianten & Bestand</h2>
-            <p className="muted">
-              Neue Farben mit passenden Größen ergänzen. Bestehende Farben,
-              Farbtöne und Größen kannst du direkt in der Tabelle ändern. Neue
-              Varianten starten mit Bestand 0.
-            </p>
-            <div className="matrix-form">
-              <label>
-                Farbe
-                <input
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                />
-              </label>
-              <label>
-                Farbwert
-                <input
-                  type="color"
-                  value={hex}
-                  onChange={(e) => setHex(e.target.value)}
-                />
-              </label>
-              <label>
-                {isShoeCategory(p.category)
-                  ? "EU-Schuhgrößen (mit Komma)"
-                  : "Größen (mit Komma)"}
-                <input
-                  value={sizes}
-                  placeholder={
-                    isShoeCategory(p.category)
-                      ? "z. B. 40, 41, 42, 42.5"
-                      : "z. B. S, M, L"
-                  }
-                  onChange={(e) => setSizes(e.target.value)}
-                />
-              </label>
-              <button type="button" className="btn outline" onClick={addMatrix}>
-                <Plus size={16} />
-                Varianten hinzufügen
-              </button>
-            </div>
-            <div className="size-presets" aria-label="Größenvorschläge">
-              {suggestedSizes(p.category).map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  className="btn outline"
-                  aria-pressed={parseSizes(sizes).includes(size)}
-                  onClick={() =>
-                    setSizes((prev) => {
-                      const list = parseSizes(prev);
-                      return (
-                        list.includes(size)
-                          ? list.filter((s) => s !== size)
-                          : [...list, size]
-                      ).join(", ");
-                    })
-                  }
-                >
-                  {isShoeCategory(p.category) ? `EU ${size}` : size}
-                </button>
-              ))}
-            </div>
-            <datalist id="variant-sizes">
-              {suggestedSizes(p.category).map((size) => (
-                <option key={size} value={size} />
-              ))}
-            </datalist>
+            <AddColors
+              key={p.category}
+              variants={p.variants}
+              category={p.category}
+              onAdd={(newVariants) =>
+                setP((prev) => ({
+                  ...prev,
+                  variants: [...prev.variants, ...newVariants],
+                }))
+              }
+            />
             <VariantCards
               variants={p.variants}
               category={p.category}
