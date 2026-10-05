@@ -12,9 +12,84 @@ export function VariantCards({
   category: string;
   onChange: (variants: ShopVariant[]) => void;
 }) {
+  const [allStock, setAllStock] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [invalid, setInvalid] = useState(false);
+  function applyAllStock() {
+    const amount = Number(allStock);
+    if (
+      !allStock.trim() ||
+      !Number.isInteger(amount) ||
+      amount < 0 ||
+      amount > 1000000
+    ) {
+      setInvalid(true);
+      setFeedback("Bitte eine ganze Zahl zwischen 0 und 1.000.000 eingeben.");
+      return;
+    }
+    const minimum = Math.max(0, ...variants.map((v) => v.reserved));
+    if (amount < minimum) {
+      setInvalid(true);
+      setFeedback(
+        `Mindestens ${minimum} Stück erforderlich: Eine Variante hat bereits so viele reservierte Artikel. Es wurde nichts geändert.`,
+      );
+      return;
+    }
+    onChange(variants.map((v) => ({ ...v, stock: amount })));
+    setInvalid(false);
+    setFeedback(
+      `Bestand auf ${amount} Stück je Variante gesetzt (${variants.length} Varianten). Zum Veröffentlichen oben speichern.`,
+    );
+  }
   const groups = [...new Set(variants.map((v) => v.color))];
   return (
     <div className="variant-cards">
+      {variants.length > 0 && (
+        <section className="variant-color-card">
+          <h3>Bestand für alle Varianten</h3>
+          <p className="muted">
+            Gilt für alle {variants.length} Varianten dieses Produkts – über
+            alle Farben und Größen. Die Menge wird pro Variante gesetzt, nicht
+            aufgeteilt.
+          </p>
+          <div className="variant-bulk-stock">
+            <label>
+              Stück je Variante
+              <input
+                type="number"
+                min="0"
+                max="1000000"
+                step="1"
+                value={allStock}
+                placeholder="z. B. 10"
+                onChange={(e) => setAllStock(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyAllStock();
+                  }
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn"
+              disabled={!allStock.trim()}
+              onClick={applyAllStock}
+            >
+              Auf alle Varianten anwenden
+            </button>
+          </div>
+          {feedback && (
+            <p
+              role={invalid ? "alert" : "status"}
+              className={invalid ? "form-error" : "save-success"}
+            >
+              {feedback}
+            </p>
+          )}
+        </section>
+      )}
       {groups.map((color) => (
         <ColorCard
           key={color}
