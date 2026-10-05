@@ -10,7 +10,13 @@ export const metadata: Metadata = {
   },
   description:
     "Zeitlose Essentials, entspannte Silhouetten und dein eigener Style.",
-  icons: { icon: "/favicon.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico?v=2", sizes: "any" },
+      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
+    ],
+    apple: { url: "/apple-touch-icon.png?v=2", sizes: "180x180" },
+  },
 };
 export default function RootLayout({
   children,
